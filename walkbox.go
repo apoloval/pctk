@@ -60,8 +60,8 @@ func (w *WalkBox) isConvex() bool {
 	return totalCrossProduct != 0
 }
 
-// ContainsPoint check if the provided position is in the boundaries defined by the WalkBox.
-func (w *WalkBox) ContainsPoint(p *Positionf) bool {
+// containsPoint check if the provided position is in the boundaries defined by the WalkBox.
+func (w *WalkBox) containsPoint(p *Positionf) bool {
 	// Check if the position is one of the vertices
 	for _, vertex := range w.vertices {
 		if p.Equals(vertex) {
@@ -83,23 +83,23 @@ func (w *WalkBox) ContainsPoint(p *Positionf) bool {
 	return numberOfIntersections%2 == 1 // Odd count means inside
 }
 
-// IsAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
-func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
-	return w.GateWith(otherWalkBox) != nil
+// isAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
+func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
+	return w.gateWith(otherWalkBox) != nil
 }
 
-// GateWith returns the gate (shared point) between two adjacent walk boxes, if any.
-func (w *WalkBox) GateWith(otherWalkBox *WalkBox) *Positionf {
+// gateWith returns the gate (shared point) between two adjacent walk boxes, if any.
+func (w *WalkBox) gateWith(otherWalkBox *WalkBox) *Positionf {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
-			if w.ContainsPoint(vertex) {
+			if w.containsPoint(vertex) {
 				return vertex
 			}
 		}
 
 		// two-way verification
 		for _, vertex := range w.vertices {
-			if otherWalkBox.ContainsPoint(vertex) {
+			if otherWalkBox.containsPoint(vertex) {
 				return vertex
 			}
 		}
@@ -108,8 +108,8 @@ func (w *WalkBox) GateWith(otherWalkBox *WalkBox) *Positionf {
 	return nil // WalkBoxes aren't adjacent
 }
 
-// Distance calculates the shortest distance from the WalkBox to the given position.
-func (wb *WalkBox) Distance(p *Positionf) float32 {
+// distance calculates the shortest distance from the WalkBox to the given position.
+func (wb *WalkBox) distance(p *Positionf) float32 {
 	numVertices := len(wb.vertices)
 
 	var minDistance float32 = math.MaxFloat32
@@ -167,7 +167,7 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 			if i == j {
 				distanceMatrix[i][j] = 0
 				itineraryMatrix[i][j] = i
-			} else if walkbox.IsAdjacent(otherWalkBox) {
+			} else if walkbox.isAdjacent(otherWalkBox) {
 				distanceMatrix[i][j] = 1
 				itineraryMatrix[i][j] = j
 			} else {
@@ -237,11 +237,11 @@ func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 	var minDistance float32 = math.MaxFloat32
 	id = InvalidWalkBox
 	for i, wb := range wm.walkBoxes {
-		if included = wb.ContainsPoint(p); included {
+		if included = wb.containsPoint(p); included {
 			return i, included
 		}
 
-		current := wb.Distance(p)
+		current := wb.distance(p)
 		if current < minDistance {
 			id = i
 			minDistance = current
@@ -257,13 +257,13 @@ func (wm *WalkBoxMatrix) closestPositionToWalkBox(from, to int) *Positionf {
 	fromWb := wm.walkBoxes[from]
 	toWb := wm.walkBoxes[to]
 	// GateWith can return nil, but in this case is not expected, should panic?
-	return fromWb.GateWith(toWb)
+	return fromWb.gateWith(toWb)
 }
 
 // closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
 func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) *Positionf {
 	wb := wm.walkBoxes[from]
-	if wb.ContainsPoint(p) {
+	if wb.containsPoint(p) {
 		return p
 	}
 

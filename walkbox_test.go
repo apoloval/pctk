@@ -54,64 +54,7 @@ func TestNewWalkBox(t *testing.T) {
 
 }
 
-func TestContainsPoint(t *testing.T) {
-	testCases := []struct {
-		name       string
-		vertices   [4]*pctk.Positionf
-		point      *pctk.Positionf
-		assertFunc func(t *testing.T, isInside bool)
-	}{
-		{
-			name:     "The point should be considered inside the polygon when it is on the edge",
-			vertices: [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
-			point:    &pctk.Positionf{X: 2, Y: 0}, // On the edge
-			assertFunc: func(t *testing.T, isInside bool) {
-				assert.True(t, isInside)
-			},
-		},
-		{
-			name:     "The point should be inside the polygon",
-			vertices: [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
-			point:    &pctk.Positionf{X: 2, Y: 2},
-			assertFunc: func(t *testing.T, isInside bool) {
-				assert.True(t, isInside)
-			},
-		},
-		{
-			name:     "The point should be outside the polygon",
-			vertices: [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
-			point:    &pctk.Positionf{X: 5, Y: 5},
-			assertFunc: func(t *testing.T, isInside bool) {
-				assert.False(t, isInside)
-			},
-		},
-		{
-			name:     "The point should be considered inside the polygon when it is on a vertex",
-			vertices: [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
-			point:    &pctk.Positionf{X: 0, Y: 0}, // On the vertex
-			assertFunc: func(t *testing.T, isInside bool) {
-				assert.True(t, isInside)
-			},
-		},
-		{
-			name:     "The point should be outside when it is far from the polygon",
-			vertices: [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
-			point:    &pctk.Positionf{X: 10, Y: 10}, // Clearly outside the polygon
-			assertFunc: func(t *testing.T, isInside bool) {
-				assert.False(t, isInside)
-			},
-		},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			walkBox := pctk.NewWalkBox(DefaultWalkBoxID, testCase.vertices)
-			isInside := walkBox.ContainsPoint(testCase.point)
-			testCase.assertFunc(t, isInside)
-		})
-	}
-}
-
-func TestWalkBoxIsAdjacent(t *testing.T) {
+func TestFindPath(t *testing.T) {
 	/*
 		Polygons disposition:
 
@@ -144,43 +87,6 @@ func TestWalkBoxIsAdjacent(t *testing.T) {
 		- box7 is adjacent to box4, box6 (taller and positioned above box4)
 	*/
 
-	box0 := pctk.NewWalkBox("walkbox0", [4]*pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
-	box1 := pctk.NewWalkBox("walkbox1", [4]*pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}})
-	box2 := pctk.NewWalkBox("walkbox2", [4]*pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}})
-	box3 := pctk.NewWalkBox("walkbox3", [4]*pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}})
-	box4 := pctk.NewWalkBox("walkbox4", [4]*pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
-	box5 := pctk.NewWalkBox("walkbox5", [4]*pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
-	box6 := pctk.NewWalkBox("walkbox6", [4]*pctk.Positionf{{0, 3}, {1, 3}, {1, 4}, {0, 4}})
-	box7 := pctk.NewWalkBox("walkbox7", [4]*pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}})
-
-	assert.True(t, box0.IsAdjacent(box1), "box0 should be adjacent to box1")
-	assert.True(t, box0.IsAdjacent(box3), "box0 should be adjacent to box3")
-	assert.True(t, box0.IsAdjacent(box4), "box0 should be adjacent to box4")
-	assert.True(t, box1.IsAdjacent(box0), "box1 should be adjacent to box0")
-	assert.True(t, box1.IsAdjacent(box2), "box1 should be adjacent to box2")
-	assert.True(t, box1.IsAdjacent(box3), "box1 should be adjacent to box3")
-	assert.True(t, box1.IsAdjacent(box4), "box1 should be adjacent to box4")
-	assert.True(t, box2.IsAdjacent(box4), "box2 should be adjacent to box4")
-	assert.True(t, box2.IsAdjacent(box5), "box2 should be adjacent to box5")
-	assert.True(t, box3.IsAdjacent(box0), "box3 should be adjacent to box0")
-	assert.True(t, box3.IsAdjacent(box1), "box3 should be adjacent to box1")
-	assert.True(t, box3.IsAdjacent(box4), "box3 should be adjacent to box4")
-	assert.True(t, box3.IsAdjacent(box7), "box3 should be adjacent to box7")
-	assert.True(t, box4.IsAdjacent(box5), "box4 should be adjacent to box5")
-	assert.True(t, box4.IsAdjacent(box7), "box4 should be adjacent to box7")
-	assert.True(t, box5.IsAdjacent(box7), "box5 should be adjacent to box7")
-	// Test non-adjacency
-	assert.False(t, box0.IsAdjacent(box2), "box0 should not be adjacent to box2")
-	assert.False(t, box3.IsAdjacent(box2), "box3 should not be adjacent to box2")
-	assert.False(t, box0.IsAdjacent(box5), "box0 should not be adjacent to box5")
-	assert.False(t, box6.IsAdjacent(box3), "box6 should not be adjacent to box3")
-	// Test adjacency when there are no shared vertices and no overlapping areas
-	assert.True(t, box6.IsAdjacent(box7), "box6 should be adjacent to box7")
-	assert.True(t, box7.IsAdjacent(box6), "box7 should be adjacent to box6")
-
-}
-
-func TestFindPath(t *testing.T) {
 	testCases := []struct {
 		name       string
 		from       *pctk.Positionf
