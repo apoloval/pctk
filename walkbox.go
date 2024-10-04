@@ -85,29 +85,21 @@ func (w *WalkBox) containsPoint(p *Positionf) bool {
 
 // isAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
 func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
-	_, ok := w.gateWith(otherWalkBox)
-	return ok
-}
-
-// gateWith returns the gate (shared point) between two adjacent walk boxes, if any.
-// It returns nil if either WalkBox is disabled.
-func (w *WalkBox) gateWith(otherWalkBox *WalkBox) (pos *Positionf, ok bool) {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
 			if w.containsPoint(vertex) {
-				return vertex, true
+				return true
 			}
 		}
 
 		// two-way verification
 		for _, vertex := range w.vertices {
 			if otherWalkBox.containsPoint(vertex) {
-				return vertex, true
+				return true
 			}
 		}
 	}
-
-	return nil, false // WalkBoxes aren't adjacent
+	return false
 }
 
 // distance calculates the shortest distance from the WalkBox to the given position.
