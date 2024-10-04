@@ -89,6 +89,7 @@ func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
 }
 
 // gateWith returns the gate (shared point) between two adjacent walk boxes, if any.
+// It returns nil if either WalkBox is disabled.
 func (w *WalkBox) gateWith(otherWalkBox *WalkBox) *Positionf {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
