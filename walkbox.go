@@ -85,28 +85,29 @@ func (w *WalkBox) containsPoint(p *Positionf) bool {
 
 // isAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
 func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
-	return w.gateWith(otherWalkBox) != nil
+	_, ok := w.gateWith(otherWalkBox)
+	return ok
 }
 
 // gateWith returns the gate (shared point) between two adjacent walk boxes, if any.
 // It returns nil if either WalkBox is disabled.
-func (w *WalkBox) gateWith(otherWalkBox *WalkBox) *Positionf {
+func (w *WalkBox) gateWith(otherWalkBox *WalkBox) (pos *Positionf, ok bool) {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
 			if w.containsPoint(vertex) {
-				return vertex
+				return vertex, true
 			}
 		}
 
 		// two-way verification
 		for _, vertex := range w.vertices {
 			if otherWalkBox.containsPoint(vertex) {
-				return vertex
+				return vertex, true
 			}
 		}
 	}
 
-	return nil // WalkBoxes aren't adjacent
+	return nil, false // WalkBoxes aren't adjacent
 }
 
 // distance calculates the shortest distance from the WalkBox to the given position.
@@ -203,11 +204,17 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 	}
 }
 
-// FindPath calculates and returns a path as a sequence of positions from the
+// WayPoint represents a point and its associated WalkBox.
+type WayPoint struct {
+	Walkbox  *WalkBox
+	Position Positionf
+}
+
+// FindPath calculates and returns a path as a sequence of waypoints from the
 // starting point 'from' to the destination 'to' within the walk box matrix.
-// The path is returned as a slice of positions representing waypoints.
-func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*Positionf {
-	var path []*Positionf
+// The path is returned as a slice of waypoints.
+func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*WayPoint {
+	var path []*WayPoint
 	current, _ := wm.walkBoxAt(from)
 	target, _ := wm.walkBoxAt(to)
 
@@ -216,10 +223,13 @@ func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*Positionf {
 		if next == InvalidWalkBox {
 			break
 		}
-		path = append(path, wm.closestPositionToWalkBox(current, next))
+		nextPosition := wm.closestPositionToWalkBox(from, next)
+		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition})
 		current = next
+		from = &nextPosition
 	}
-	path = append(path, wm.closestPositionOnWalkBox(current, to))
+
+	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, to)})
 	return path
 }
 
@@ -252,24 +262,22 @@ func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 	return id, false
 }
 
-// closestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
-// the origin.
-func (wm *WalkBoxMatrix) closestPositionToWalkBox(from, to int) *Positionf {
-	fromWb := wm.walkBoxes[from]
-	toWb := wm.walkBoxes[to]
-	// GateWith can return nil, but in this case is not expected, should panic?
-	return fromWb.gateWith(toWb)
-}
-
 // closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
-func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) *Positionf {
+func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) Positionf {
 	wb := wm.walkBoxes[from]
 	if wb.containsPoint(p) {
-		return p
+		return *p
 	}
 
+	return wm.closestPositionToWalkBox(p, from) // looking for the closest edge point
+}
+
+// closestPositionToWalkBox returns the nearest point on the edge of the specified walkbox
+// from a given position p.
+func (wm *WalkBoxMatrix) closestPositionToWalkBox(p *Positionf, to int) Positionf {
 	var minDistance float32 = math.MaxFloat32
 	var closestPoint *Positionf
+	wb := wm.walkBoxes[to]
 	numVertices := len(wb.vertices)
 
 	for i := 0; i < numVertices; i++ {
@@ -283,5 +291,6 @@ func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) *Posit
 			closestPoint = currentPoint
 		}
 	}
-	return closestPoint
+
+	return *closestPoint
 }
