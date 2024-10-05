@@ -123,7 +123,7 @@ func (wb *WalkBox) distance(p Positionf) float32 {
 
 // WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
 type WalkBoxMatrix struct {
-	WalkBoxes       []*WalkBox
+	walkBoxes       []*WalkBox
 	itineraryMatrix [][]int
 }
 
@@ -137,27 +137,32 @@ const (
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
 func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	wm := &WalkBoxMatrix{
-		WalkBoxes: walkboxes,
+		walkBoxes: walkboxes,
 	}
 
 	wm.resetItinerary()
 	return wm
 }
 
+// WalkBoxes returns the list of walkable boxes in the WalkBoxMatrix.
+func (wm *WalkBoxMatrix) WalkBoxes() []*WalkBox {
+	return wm.walkBoxes
+}
+
 // resetItinerary computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
 func (wm *WalkBoxMatrix) resetItinerary() {
-	numBoxes := len(wm.WalkBoxes)
+	numBoxes := len(wm.walkBoxes)
 	distanceMatrix := make([][]int, numBoxes)
 	itineraryMatrix := make([][]int, numBoxes)
 
-	for i, walkbox := range wm.WalkBoxes {
+	for i, walkbox := range wm.walkBoxes {
 		itineraryMatrix[i] = make([]int, numBoxes)
 		distanceMatrix[i] = make([]int, numBoxes)
 
 		// Initialize the distance matrix: each box has distance 0 to itself,
 		// and distance 1 to its direct neighbors. Initially, it has distance
 		// 255 (= infinityDistance) to all other boxes.
-		for j, otherWalkBox := range wm.WalkBoxes {
+		for j, otherWalkBox := range wm.walkBoxes {
 			if i == j {
 				distanceMatrix[i][j] = 0
 				itineraryMatrix[i][j] = i
@@ -172,9 +177,9 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 	}
 
 	// Compute the shortest routes between boxes via Kleene's algorithm.
-	for i := range wm.WalkBoxes {
-		for j := range wm.WalkBoxes {
-			for k := range wm.WalkBoxes {
+	for i := range wm.walkBoxes {
+		for j := range wm.walkBoxes {
+			for k := range wm.walkBoxes {
 				distIK := distanceMatrix[i][k]
 				distKJ := distanceMatrix[k][j]
 				if distanceMatrix[i][j] > distIK+distKJ {
@@ -190,8 +195,8 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 
 // EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
 func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
-	if id >= 0 && id < len(wm.WalkBoxes) {
-		wm.WalkBoxes[id].enabled = enabled
+	if id >= 0 && id < len(wm.walkBoxes) {
+		wm.walkBoxes[id].enabled = enabled
 		wm.resetItinerary()
 	}
 }
@@ -216,18 +221,18 @@ func (wm *WalkBoxMatrix) FindPath(from, to Positionf) []*WayPoint {
 			break
 		}
 		nextPosition := wm.closestPositionToWalkBox(from, next)
-		path = append(path, &WayPoint{Walkbox: wm.WalkBoxes[next], Position: nextPosition})
+		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition})
 		current = next
 		from = nextPosition
 	}
 
-	path = append(path, &WayPoint{Walkbox: wm.WalkBoxes[current], Position: wm.closestPositionOnWalkBox(current, to)})
+	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, to)})
 	return path
 }
 
 // nextWalkBox returns the next walk box in the path from the source to the destination.
 func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
-	if from < 0 || from >= len(wm.WalkBoxes) || to < 0 || to >= len(wm.WalkBoxes) {
+	if from < 0 || from >= len(wm.walkBoxes) || to < 0 || to >= len(wm.walkBoxes) {
 		return InvalidWalkBox
 	}
 	return wm.itineraryMatrix[from][to]
@@ -239,7 +244,7 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
 	var minDistance float32 = math.MaxFloat32
 	id = InvalidWalkBox
-	for i, wb := range wm.WalkBoxes {
+	for i, wb := range wm.walkBoxes {
 		if included = wb.containsPoint(p); included {
 			return i, included
 		}
@@ -256,7 +261,7 @@ func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
 
 // closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
 func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p Positionf) Positionf {
-	wb := wm.WalkBoxes[from]
+	wb := wm.walkBoxes[from]
 	if wb.containsPoint(p) {
 		return p
 	}
@@ -269,7 +274,7 @@ func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p Positionf) Positio
 func (wm *WalkBoxMatrix) closestPositionToWalkBox(p Positionf, to int) Positionf {
 	var minDistance float32 = math.MaxFloat32
 	var closestPoint Positionf
-	wb := wm.WalkBoxes[to]
+	wb := wm.walkBoxes[to]
 	numVertices := len(wb.vertices)
 
 	for i := 0; i < numVertices; i++ {
