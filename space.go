@@ -175,12 +175,12 @@ func (p Positionf) Move(to Positionf, speed Positionf) Positionf {
 }
 
 // CrossProduct calculates the 2D cross product (determinant) of vectors p->p1 and p1->p2 to determine their orientation.
-func (p *Positionf) CrossProduct(p1, p2 *Positionf) float32 {
+func (p Positionf) CrossProduct(p1, p2 Positionf) float32 {
 	return (p1.X-p.X)*(p2.Y-p1.Y) - (p1.Y-p.Y)*(p2.X-p1.X)
 }
 
 // IsIntersecting checks if a horizontal ray from point p intersects the line segment p1->p2 (Ray-Casting method).
-func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
+func (p Positionf) IsIntersecting(p1, p2 Positionf) bool {
 	if (p1.Y > p.Y) != (p2.Y > p.Y) {
 		return p.X < (p2.X-p1.X)*(p.Y-p1.Y)/(p2.Y-p1.Y)+p1.X
 	}
@@ -189,14 +189,14 @@ func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
 }
 
 // Distance calculates the Euclidean distance between two points.
-func (p *Positionf) Distance(p1 *Positionf) float32 {
+func (p Positionf) Distance(p1 Positionf) float32 {
 	dx := p.X - p1.X
 	dy := p.Y - p1.Y
 	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
 // ClosestPointOnSegment returns the closest point on the segment defined by p1 and p2 to the point p.
-func (p *Positionf) ClosestPointOnSegment(p1, p2 *Positionf) *Positionf {
+func (p Positionf) ClosestPointOnSegment(p1, p2 Positionf) Positionf {
 	if p1.Equals(p2) {
 		return p1
 	}
@@ -218,11 +218,11 @@ func (p *Positionf) ClosestPointOnSegment(p1, p2 *Positionf) *Positionf {
 	closestX := p1.X + t*vx
 	closestY := p1.Y + t*vy
 
-	return &Positionf{closestX, closestY}
+	return Positionf{closestX, closestY}
 }
 
 // Equals returns true if both Positionf instances have the same X and Y coordinates.
-func (p *Positionf) Equals(p1 *Positionf) bool {
+func (p Positionf) Equals(p1 Positionf) bool {
 	return p.X == p1.X && p.Y == p1.Y
 }
 

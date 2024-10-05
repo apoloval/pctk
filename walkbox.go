@@ -9,14 +9,14 @@ import (
 type WalkBox struct {
 	walkBoxID string
 	enabled   bool
-	vertices  [4]*Positionf
+	vertices  [4]Positionf
 }
 
 // NewWalkBox creates a new WalkBox with the given ID and vertices.
 // It ensures the polygon formed by the vertices is convex. If not, it will cause a panic.
 // Why convex? Because you can draw a straight line/path between any two vertices inside the polygon
 // without needing to implement complex pathfinding algorithms.
-func NewWalkBox(id string, vertices [4]*Positionf) *WalkBox {
+func NewWalkBox(id string, vertices [4]Positionf) *WalkBox {
 	w := &WalkBox{
 		walkBoxID: id,
 		vertices:  vertices,
@@ -61,7 +61,7 @@ func (w *WalkBox) isConvex() bool {
 }
 
 // containsPoint check if the provided position is in the boundaries defined by the WalkBox.
-func (w *WalkBox) containsPoint(p *Positionf) bool {
+func (w *WalkBox) containsPoint(p Positionf) bool {
 	// Check if the position is one of the vertices
 	for _, vertex := range w.vertices {
 		if p.Equals(vertex) {
@@ -103,7 +103,7 @@ func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
 }
 
 // distance calculates the shortest distance from the WalkBox to the given position.
-func (wb *WalkBox) distance(p *Positionf) float32 {
+func (wb *WalkBox) distance(p Positionf) float32 {
 	numVertices := len(wb.vertices)
 
 	var minDistance float32 = math.MaxFloat32
@@ -205,7 +205,7 @@ type WayPoint struct {
 // FindPath calculates and returns a path as a sequence of waypoints from the
 // starting point 'from' to the destination 'to' within the walk box matrix.
 // The path is returned as a slice of waypoints.
-func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*WayPoint {
+func (wm *WalkBoxMatrix) FindPath(from, to Positionf) []*WayPoint {
 	var path []*WayPoint
 	current, _ := wm.walkBoxAt(from)
 	target, _ := wm.walkBoxAt(to)
@@ -218,7 +218,7 @@ func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*WayPoint {
 		nextPosition := wm.closestPositionToWalkBox(from, next)
 		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition})
 		current = next
-		from = &nextPosition
+		from = nextPosition
 	}
 
 	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, to)})
@@ -236,7 +236,7 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 // walkBoxAt returns the walk box identifier at the given position or the closest one,
 // along with a boolean indicating inclusion. If the point is located between two or more
 // boxes, it returns the lowest walk box ID among them.
-func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
+func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
 	var minDistance float32 = math.MaxFloat32
 	id = InvalidWalkBox
 	for i, wb := range wm.walkBoxes {
@@ -255,10 +255,10 @@ func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 }
 
 // closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
-func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) Positionf {
+func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p Positionf) Positionf {
 	wb := wm.walkBoxes[from]
 	if wb.containsPoint(p) {
-		return *p
+		return p
 	}
 
 	return wm.closestPositionToWalkBox(p, from) // looking for the closest edge point
@@ -266,9 +266,9 @@ func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) Positi
 
 // closestPositionToWalkBox returns the nearest point on the edge of the specified walkbox
 // from a given position p.
-func (wm *WalkBoxMatrix) closestPositionToWalkBox(p *Positionf, to int) Positionf {
+func (wm *WalkBoxMatrix) closestPositionToWalkBox(p Positionf, to int) Positionf {
 	var minDistance float32 = math.MaxFloat32
-	var closestPoint *Positionf
+	var closestPoint Positionf
 	wb := wm.walkBoxes[to]
 	numVertices := len(wb.vertices)
 
@@ -284,5 +284,5 @@ func (wm *WalkBoxMatrix) closestPositionToWalkBox(p *Positionf, to int) Position
 		}
 	}
 
-	return *closestPoint
+	return closestPoint
 }
