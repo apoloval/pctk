@@ -10,23 +10,30 @@ type WalkBox struct {
 	walkBoxID string
 	enabled   bool
 	vertices  [4]Positionf
+	scale     float32
 }
 
 // NewWalkBox creates a new WalkBox with the given ID and vertices.
 // It ensures the polygon formed by the vertices is convex. If not, it will cause a panic.
 // Why convex? Because you can draw a straight line/path between any two vertices inside the polygon
 // without needing to implement complex pathfinding algorithms.
-func NewWalkBox(id string, vertices [4]Positionf) *WalkBox {
+func NewWalkBox(id string, vertices [4]Positionf, scale float32) *WalkBox {
 	w := &WalkBox{
 		walkBoxID: id,
 		vertices:  vertices,
 		enabled:   true,
+		scale:     scale,
 	}
 
 	if !w.isConvex() {
 		log.Panicf("walkbox must be a convex polygon: %v", vertices)
 	}
 	return w
+}
+
+// Scale returns the scale factor of the WalkBox for camera zoom effects.
+func (w *WalkBox) Scale() float32 {
+	return w.scale
 }
 
 // isConvex check if the current WalkBox is a convex poligon.

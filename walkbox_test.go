@@ -10,6 +10,7 @@ import (
 
 const (
 	DefaultWalkBoxID = "walkbox"
+	DefaultScale     = 1.0
 )
 
 func TestNewWalkBox(t *testing.T) {
@@ -43,11 +44,11 @@ func TestNewWalkBox(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			if testCase.shouldPanic {
 				assert.Panics(t, func() {
-					pctk.NewWalkBox(DefaultWalkBoxID, testCase.vertices)
+					pctk.NewWalkBox(DefaultWalkBoxID, testCase.vertices, DefaultScale)
 				}, testCase.message)
 			} else {
 				assert.NotPanics(t, func() {
-					pctk.NewWalkBox(DefaultWalkBoxID, testCase.vertices)
+					pctk.NewWalkBox(DefaultWalkBoxID, testCase.vertices, DefaultScale)
 				}, testCase.message)
 			}
 		})
@@ -126,15 +127,15 @@ func TestFindPath(t *testing.T) {
 		},
 	}
 
-	box0 := pctk.NewWalkBox("walkbox0", [4]pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
-	box1 := pctk.NewWalkBox("walkbox1", [4]pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}})
-	box2 := pctk.NewWalkBox("walkbox2", [4]pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}})
-	box3 := pctk.NewWalkBox("walkbox3", [4]pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}})
-	box4 := pctk.NewWalkBox("walkbox4", [4]pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
-	box5 := pctk.NewWalkBox("walkbox5", [4]pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
-	box6 := pctk.NewWalkBox("walkbox6", [4]pctk.Positionf{{1, 4}, {0, 4}, {0, 3}, {1, 3}}) // starts in top right vertex on purpose
-	box7 := pctk.NewWalkBox("walkbox7", [4]pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}})
-	box8 := pctk.NewWalkBox("walkbox8", [4]pctk.Positionf{{2, 3}, {3, 3}, {3, 4}, {2, 4}})
+	box0 := pctk.NewWalkBox("walkbox0", [4]pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}}, DefaultScale)
+	box1 := pctk.NewWalkBox("walkbox1", [4]pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}}, DefaultScale)
+	box2 := pctk.NewWalkBox("walkbox2", [4]pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}}, DefaultScale)
+	box3 := pctk.NewWalkBox("walkbox3", [4]pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}}, DefaultScale)
+	box4 := pctk.NewWalkBox("walkbox4", [4]pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}}, DefaultScale)
+	box5 := pctk.NewWalkBox("walkbox5", [4]pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}}, DefaultScale)
+	box6 := pctk.NewWalkBox("walkbox6", [4]pctk.Positionf{{1, 4}, {0, 4}, {0, 3}, {1, 3}}, DefaultScale) // starts in top right vertex on purpose
+	box7 := pctk.NewWalkBox("walkbox7", [4]pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}}, DefaultScale)
+	box8 := pctk.NewWalkBox("walkbox8", [4]pctk.Positionf{{2, 3}, {3, 3}, {3, 4}, {2, 4}}, DefaultScale)
 
 	walkBoxMatrix := pctk.NewWalkBoxMatrix([]*pctk.WalkBox{box0, box1, box2, box3, box4, box5, box6, box7, box8})
 
