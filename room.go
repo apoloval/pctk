@@ -7,11 +7,12 @@ import (
 
 // Room represents a room in the game.
 type Room struct {
-	actors     []*Actor  // The actors in the room
-	background *Image    // The background image of the room
-	id         string    // The ID of the room
-	objects    []*Object // The objects declared in the room
-	script     *Script   // The script where this room is defined. Used to call the room functions.
+	actors     []*Actor       // The actors in the room
+	background *Image         // The background image of the room
+	id         string         // The ID of the room
+	objects    []*Object      // The objects declared in the room
+	script     *Script        // The script where this room is defined. Used to call the room functions.
+	wbmatrix   *WalkBoxMatrix // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
 
 // NewRoom creates a new room with the given background image.
@@ -37,6 +38,20 @@ func (a *App) RoomByID(id string) *Room {
 func (r *Room) DeclareObject(obj *Object) {
 	obj.room = r
 	r.objects = append(r.objects, obj)
+	// TODO testing purpose
+	box0 := NewWalkBox("walkbox0", [4]Positionf{{5, 140}, {320, 140}, {270, 110}, {80, 110}}, 1)
+	box1 := NewWalkBox("walkbox1", [4]Positionf{{80, 110}, {270, 110}, {175, 100}, {145, 100}}, 0.95)
+	box2 := NewWalkBox("walkbox2", [4]Positionf{{145, 100}, {175, 100}, {175, 90}, {145, 90}}, 0.8)
+	box3 := NewWalkBox("walkbox3", [4]Positionf{{145, 90}, {175, 90}, {175, 80}, {145, 80}}, 0.6)
+	box4 := NewWalkBox("walkbox4", [4]Positionf{{155, 80}, {165, 80}, {165, 75}, {155, 75}}, 0.3)
+
+	r.wbmatrix = NewWalkBoxMatrix([]*WalkBox{box0, box1, box2, box3, box4})
+
+}
+
+// DeclareWalkBoxMatrix declares walk box matrix for the room.
+func (r *Room) DeclareWalkBoxMatrix(walkboxes []*WalkBox) {
+	r.wbmatrix = NewWalkBoxMatrix(walkboxes)
 }
 
 // Draw renders the room in the viewport.
@@ -54,6 +69,11 @@ func (r *Room) Draw() {
 	})
 	for _, item := range items {
 		item.Draw()
+	}
+
+	// TODO if Debug Mode
+	for _, w := range r.wbmatrix.WalkBoxes() {
+		w.Draw()
 	}
 }
 
