@@ -226,6 +226,11 @@ func (p Positionf) Equals(p1 Positionf) bool {
 	return p.X == p1.X && p.Y == p1.Y
 }
 
+// Converts a Positionf to a Raylib Vector2.
+func (p Positionf) toRaylib() rl.Vector2 {
+	return rl.NewVector2(p.X, p.Y)
+}
+
 // Size represents a 2D size.
 type Size struct {
 	W, H int

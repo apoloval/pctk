@@ -3,6 +3,8 @@ package pctk
 import (
 	"log"
 	"math"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 // Walkbox refers to a convex polygonal area that defines the walkable space for actors.
@@ -34,6 +36,16 @@ func NewWalkBox(id string, vertices [4]Positionf, scale float32) *WalkBox {
 // Scale returns the scale factor of the WalkBox for camera zoom effects.
 func (w *WalkBox) Scale() float32 {
 	return w.scale
+}
+
+// Draws the edges of the WalkBox.
+func (w *WalkBox) Draw() {
+	numVertices := len(w.vertices)
+	for i := 0; i < numVertices; i++ {
+		p1 := w.vertices[i]
+		p2 := w.vertices[(i+1)%numVertices]
+		rl.DrawLineV(p1.toRaylib(), p2.toRaylib(), BrigthGreen)
+	}
 }
 
 // isConvex check if the current WalkBox is a convex poligon.
