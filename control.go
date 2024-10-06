@@ -395,6 +395,8 @@ func (p *ControlPane) processControlInputs(app *App) {
 		if ViewportRect.Contains(pos) {
 			p.action.ProcessRightClick(app, pos, hover)
 		}
+	} else if app.IsFlagEnabled(DebugModeFlag) && rl.IsKeyPressed(rl.KeyD) {
+		app.debugEnabled = !app.debugEnabled
 	}
 }
 
