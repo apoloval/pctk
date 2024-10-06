@@ -14,13 +14,9 @@ func WithScreenZoom(zoom int32) AppOption {
 }
 
 // WithFlag allows you to enable or disable specific flags in the application.
-func WithFlag(flag uint32, enable bool) AppOption {
+func WithFlag(flag uint32) AppOption {
 	return func(a *App) {
-		if enable {
-			a.flags |= flag
-		} else {
-			a.flags &^= flag
-		}
+		a.flags |= flag
 	}
 }
 
