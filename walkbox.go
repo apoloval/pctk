@@ -39,7 +39,7 @@ func (w *WalkBox) Scale() float32 {
 }
 
 // Draws the edges of the WalkBox.
-func (w *WalkBox) Draw() {
+func (w *WalkBox) draw() {
 	numVertices := len(w.vertices)
 	for i := 0; i < numVertices; i++ {
 		p1 := w.vertices[i]
@@ -163,9 +163,11 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	return wm
 }
 
-// WalkBoxes returns the list of walkable boxes in the WalkBoxMatrix.
-func (wm *WalkBoxMatrix) WalkBoxes() []*WalkBox {
-	return wm.walkBoxes
+// WalkBoxes draw walkable boxes of the WalkBoxMatrix.
+func (wm *WalkBoxMatrix) Draw() {
+	for _, wb := range wm.walkBoxes {
+		wb.draw()
+	}
 }
 
 // resetItinerary computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.

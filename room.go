@@ -72,9 +72,7 @@ func (r *Room) Draw() {
 	}
 
 	// TODO if Debug Mode
-	for _, w := range r.wbmatrix.WalkBoxes() {
-		w.Draw()
-	}
+	r.wbmatrix.Draw()
 }
 
 // ItemAt returns the item at the given position in the room.
