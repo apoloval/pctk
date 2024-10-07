@@ -1,7 +1,7 @@
 package pctk
 
 import (
-	"log"
+	"errors"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -17,40 +17,41 @@ var (
 	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
 	DefaultActorTalkColor = BrigthGrey
-	DefaultActorUsePos    = NewPos(rl.GetScreenWidth()/2, 120)
+	DefaultActorUsePos    = NewPos(ScreenWidth/2, 120)
 )
 
+// Actor is an entity that represents a character in the game.
 type Actor struct {
-	Size      Size      // Size of the actor
-	TalkColor Color     // Color of the text when the actor talks
-	UsePos    Position  // Position where other actors interact with this actor
-	UseDir    Direction // Direction where other actors interact with this actor
+	CallRecv  ScriptCallReceiver // The call receiver for the actor
+	Costume   ResourceRef        // Reference to the costume of the actor
+	Elev      int                // Elevation of the actor
+	Name      string             // Name of the actor
+	Room      *Room              // The room where the actor is located
+	Script    *Script            // The script where this actor is defined.
+	Size      Size               // Size of the actor
+	TalkColor Color              // Color of the text when the actor talks
+	UsePos    Position           // Position where other actors interact with this actor
+	UseDir    Direction          // Direction where other actors interact with this actor
 
 	act       *Action
 	costume   *Costume
 	dialog    *Dialog
-	elev      int
 	ego       bool
-	id        string
 	inventory []*Object
 	lookAt    Direction
-	name      string
 	pos       Positionf
-	room      *Room
-	scriptLoc FieldAccessor // The location of the actor in the script
 	speed     Positionf
 }
 
 // NewActor creates a new actor with the given ID and name.
-func NewActor(id, name string) *Actor {
+func NewActor(name string) *Actor {
 	return &Actor{
 		TalkColor: DefaultActorTalkColor,
 		Size:      DefaultActorSize,
 		UsePos:    DefaultActorUsePos,
 		UseDir:    DefaultActorDirection,
 
-		id:    id,
-		name:  name,
+		Name:  name,
 		pos:   DefaultActorPosition.ToPosf(),
 		speed: DefaultActorSpeed,
 	}
@@ -59,7 +60,7 @@ func NewActor(id, name string) *Actor {
 // AddToInventory adds an object to the actor's inventory.
 func (a *Actor) AddToInventory(obj *Object) {
 	a.inventory = append(a.inventory, obj)
-	obj.owner = a
+	obj.Owner = a
 }
 
 // CancelAction cancels the current action of the actor.
@@ -70,9 +71,19 @@ func (a *Actor) CancelAction() {
 	a.act = nil
 }
 
-// Class returns the class of the actor.
-func (a *Actor) Class() ObjectClass {
+// Caption returns the name of the actor.
+func (a *Actor) Caption() string {
+	return a.Name
+}
+
+// ItemClass returns the class of the actor.
+func (a *Actor) ItemClass() ObjectClass {
 	return ObjectClassPerson
+}
+
+// DirectionTo returns the direction from the actor to the given position.
+func (a *Actor) DirectionTo(pos Position) Direction {
+	return a.pos.ToPos().DirectionTo(pos)
 }
 
 // Do executes the action in the actor.
@@ -100,11 +111,6 @@ func (a *Actor) Hotspot() Rectangle {
 	return Rectangle{Pos: a.costumePos(), Size: a.Size}
 }
 
-// ID returns the ID of the actor.
-func (a *Actor) ID() string {
-	return a.name
-}
-
 // Inventory returns the inventory of the actor.
 func (a *Actor) Inventory() []*Object {
 	return a.inventory
@@ -120,57 +126,43 @@ func (a *Actor) IsSpeaking() bool {
 	return a.dialog != nil && !a.dialog.Done().IsCompleted()
 }
 
+// Load the actor resources.
+func (a *Actor) Load(res ResourceLoader) {
+	if a.costume == nil && a.Costume != ResourceRefNull {
+		a.costume = res.LoadCostume(a.Costume)
+	}
+}
+
 // Locate the actor in the given room, position and direction.
 func (a *Actor) Locate(room *Room, pos Position, dir Direction) {
-	a.room = room
+	a.Room = room
 	a.pos = pos.ToPosf()
 	a.Do(Standing(dir))
 }
 
-// Name returns the name of the actor.
-func (a *Actor) Name() string {
-	return a.name
-}
-
-// Owner returns the actor that owns the actor in its inventory. Typically nil unless you manage to
+// ItemOwner returns the actor that owns the actor in its inventory. Typically nil unless you manage to
 // model that actors can be picked up (as if they were dogs or monkeys).
-func (a *Actor) Owner() *Actor {
+func (a *Actor) ItemOwner() *Actor {
 	return nil
 }
 
-// Position returns the position of the actor.
-func (a *Actor) Position() Position {
+// ItemPosition returns the position of the actor.
+func (a *Actor) ItemPosition() Position {
 	return a.pos.ToPos()
 }
 
-// Room returns the room where the actor is.
-func (a *Actor) Room() *Room {
-	return a.room
+// CallReceiver returns the call receiver for the actor.
+func (a *Actor) CallReceiver() ScriptCallReceiver {
+	return a.CallRecv
 }
 
-// SetCostume sets the costume for the actor.
-func (a *Actor) SetCostume(costume *Costume) *Actor {
-	a.costume = costume
-	return a
-}
-
-// SetCurrentDialog sets the current dialog for the actor.
-func (a *Actor) SetCurrentDialog(dialog *Dialog) {
-	a.dialog = dialog
-}
-
-// ScriptLocation returns the location of the actor in the script.
-func (a *Actor) ScriptLocation() FieldAccessor {
-	return a.scriptLoc
-}
-
-// UsePosition returns the position where actors interact with the actor.
-func (a *Actor) UsePosition() (Position, Direction) {
+// ItemUsePosition returns the position where actors interact with the actor.
+func (a *Actor) ItemUsePosition() (Position, Direction) {
 	return a.UsePos, a.UseDir
 }
 
 func (a *Actor) costumePos() Position {
-	return a.pos.ToPos().Sub(NewPos(a.Size.W/2, a.Size.H-a.elev))
+	return a.pos.ToPos().Sub(NewPos(a.Size.W/2, a.Size.H-a.Elev))
 }
 
 func (a *Actor) dialogPos() Position {
@@ -251,14 +243,15 @@ func (a *Action) RunFrame(actor *Actor) (completed bool) {
 	return a.prom.IsCompleted()
 }
 
-// DeclareActor declares a new actor with the given ID and name.
-func (a *App) DeclareActor(id, name string) *Actor {
-	if _, ok := a.actors[id]; ok {
-		log.Fatalf("Actor %s already exists", id)
+// DeclareActor declares a new actor in the app.
+func (a *App) DeclareActor(actor *Actor) error {
+	for _, obj := range a.actors {
+		if obj == actor {
+			return errors.New("actor already declared")
+		}
 	}
-	actor := NewActor(id, name)
-	a.actors[id] = actor
-	return actor
+	a.actors = append(a.actors, actor)
+	return nil
 }
 
 // SelectEgo sets actor as the ego.
@@ -270,4 +263,16 @@ func (a *App) SelectEgo(actor *Actor) {
 	if a.ego != nil {
 		a.ego.ego = true
 	}
+}
+
+// ActorShow shows the actor in the active room
+func (a *App) ActorShow(actor *Actor, pos Position, lookAt Direction) error {
+	if a.room == nil {
+		return errors.New("no active room to show actor")
+	}
+
+	actor.Load(a.res)
+	a.room.PutActor(actor)
+	actor.Locate(a.room, pos, lookAt)
+	return nil
 }

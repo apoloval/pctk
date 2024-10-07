@@ -85,7 +85,7 @@ func (a *App) BeginDialog(dialog *Dialog) {
 	dialog.Begin()
 	if actor := dialog.Actor(); actor != nil {
 		a.ClearDialogsFrom(actor)
-		actor.SetCurrentDialog(dialog)
+		actor.dialog = dialog
 	}
 	a.dialogs = append(a.dialogs, *dialog)
 }

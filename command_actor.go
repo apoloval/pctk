@@ -9,26 +9,14 @@ import (
 
 // ActorDeclare is a command that will declare an actor.
 type ActorDeclare struct {
-	ActorID   string
-	ActorName string
-	Costume   ResourceRef
-	TalkColor Color
-	ScriptLoc FieldAccessor
-	Size      Size
-	UsePos    Position
-	UseDir    Direction
+	Actor *Actor
 }
 
 func (cmd ActorDeclare) Execute(app *App, done *Promise) {
-	actor := app.DeclareActor(cmd.ActorID, cmd.ActorName)
-	if cmd.Costume != ResourceRefNull {
-		actor.SetCostume(app.res.LoadCostume(cmd.Costume))
+	if err := app.DeclareActor(cmd.Actor); err != nil {
+		done.CompleteWithError(err)
+		return
 	}
-	actor.Size = cmd.Size
-	actor.TalkColor = cmd.TalkColor
-	actor.UsePos = cmd.UsePos
-	actor.UseDir = cmd.UseDir
-	actor.scriptLoc = cmd.ScriptLoc
 	done.CompleteWithValue(cmd)
 }
 
@@ -40,13 +28,10 @@ type ActorShow struct {
 }
 
 func (cmd ActorShow) Execute(app *App, done *Promise) {
-	if app.room == nil {
-		done.CompleteWithErrorf("no active room to show actor %s", cmd.Actor.Name())
+	if err := app.ActorShow(cmd.Actor, cmd.Position, cmd.LookAt); err != nil {
+		done.CompleteWithErrorf("failed to show actor %s: %v", cmd.Actor.Caption(), err)
 		return
 	}
-
-	app.room.PutActor(cmd.Actor)
-	cmd.Actor.Locate(app.room, cmd.Position, cmd.LookAt)
 	done.Complete()
 }
 
@@ -57,7 +42,7 @@ type ActorLookAtPos struct {
 }
 
 func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
-	done.Bind(cmd.Actor.Do(Standing(cmd.Actor.pos.ToPos().DirectionTo(cmd.Position))))
+	done.Bind(cmd.Actor.Do(Standing(cmd.Actor.DirectionTo(cmd.Position))))
 }
 
 // ActorStand is a command that will make an actor stand in the given direction.
@@ -78,8 +63,8 @@ type ActorWalkToPosition struct {
 }
 
 func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
-	if cmd.Actor.Room() != app.room {
-		done.CompleteWithErrorf("actor %s is not in the room", cmd.Actor.Name())
+	if cmd.Actor.Room != app.room {
+		done.CompleteWithErrorf("actor %s is not in the room", cmd.Actor.Caption())
 		return
 	}
 	done.Bind(cmd.Actor.Do(WalkingTo(cmd.Position)))
@@ -94,16 +79,16 @@ type ActorWalkToItem struct {
 func (cmd ActorWalkToItem) Execute(app *App, done *Promise) {
 	switch item := cmd.Item.(type) {
 	case *Actor:
-		if item.Room() != app.room {
-			done.CompleteWithErrorf("actor %s is not in the room", item.Name())
+		if item.Room != app.room {
+			done.CompleteWithErrorf("actor %s is not in the room", item.Caption())
 			return
 		}
 	case *Object:
-		if item.Owner() != nil {
-			done.CompleteWithErrorf("object %s is in the inventory", item.Name())
+		if item.ItemOwner() != nil {
+			done.CompleteWithErrorf("object %s is in the inventory", item.Caption())
 		}
 	}
-	pos, dir := cmd.Item.UsePosition()
+	pos, dir := cmd.Item.ItemUsePosition()
 
 	done.Bind(app.RunCommandSequence(
 		ActorWalkToPosition{
@@ -133,10 +118,21 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 	}
 
 	var completed Future
-	var args []any
+	var args []ScriptEntityValue
 	other := cmd.Targets[1]
 	if other != nil {
-		args = []any{other.ScriptLocation()}
+		switch other := other.(type) {
+		case *Actor:
+			args = []ScriptEntityValue{ScriptEntityValue{
+				Type:     ScriptEntityActor,
+				UserData: other,
+			}}
+		case *Object:
+			args = []ScriptEntityValue{ScriptEntityValue{
+				Type:     ScriptEntityObject,
+				UserData: other,
+			}}
+		}
 	}
 	switch item := cmd.Targets[0].(type) {
 	case *Actor:
@@ -152,7 +148,7 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 			},
 		)
 	case *Object:
-		if item.Owner() == cmd.Actor {
+		if item.ItemOwner() == cmd.Actor {
 			switch cmd.Verb {
 			case VerbWalkTo, VerbPickUp:
 				// Verb not applicable to inventory item
@@ -161,7 +157,7 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 			}
 			// The first argument is in the inventory. If there is a second argument that is not in
 			// the inventory, walk to it and then interact. Othewise, just interact.
-			if cmd.Targets[1] != nil && cmd.Targets[1].Owner() != cmd.Actor {
+			if cmd.Targets[1] != nil && cmd.Targets[1].ItemOwner() != cmd.Actor {
 				completed = app.RunCommandSequence(
 					ActorWalkToItem{
 						Actor: cmd.Actor,
@@ -185,7 +181,7 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 
 			// Special case: use verb for a applicable object. Must walk to it, pick it up and then
 			// do the rest of the action.
-			if cmd.Verb == VerbUse && item.Class().IsOneOf(ObjectClassApplicable) && other != nil {
+			if cmd.Verb == VerbUse && item.ItemClass().IsOneOf(ObjectClassApplicable) && other != nil {
 				completed = app.RunCommandSequence(
 					ActorWalkToItem{
 						Actor: cmd.Actor,
@@ -281,39 +277,28 @@ func (cmd ActorAddToInventory) Execute(app *App, done *Promise) {
 	done.CompleteWithValue(cmd)
 }
 
-// ActorByID returns the actor with the given ID, or nil if not found.
-func (a *App) ActorByID(id string) *Actor {
-	actor, _ := a.actors[id]
-	return actor
-}
-
 // ActorCall is a command that will call a method on an actor.
 type ActorCall struct {
 	Actor    *Actor
 	Function string
-	Args     []any
+	Args     []ScriptEntityValue
 }
 
 func (cmd ActorCall) Execute(app *App, done *Promise) {
-	// We call this in the script of the current room. If the actor is imported from a include, it
-	// will still have the methods for the actions no matter the room where it is evaluated. In
-	// addition, this allows the script of the room to override the default behavior of the actor
-	// when it is in the room.
-	if app.room == nil {
-		done.CompleteWithErrorf("no active room to call actor %s", cmd.Actor.Name())
+	if cmd.Actor.Script == nil {
+		done.CompleteWithErrorf("actor %s has no script", cmd.Actor.Caption())
 		return
 	}
-	call := app.room.script.Call(
-		cmd.Actor.ScriptLocation().Append(cmd.Function),
+	call := cmd.Actor.Script.CallMethod(
+		cmd.Actor.CallRecv,
+		cmd.Function,
 		cmd.Args,
-		true,
 	)
 	call = Recover(call, func(err error) Future {
-		return app.room.script.Call(
-			WithDefaultsField(cmd.Function),
-			append([]any{cmd.Actor.ScriptLocation()}, cmd.Args...),
-			false,
-		)
+		if app.defaults == nil {
+			return AlreadyFailed(err)
+		}
+		return app.defaults.CallFunction(cmd.Function, cmd.Args)
 	})
 	done.Bind(call)
 }
