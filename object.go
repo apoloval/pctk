@@ -5,20 +5,27 @@ import "errors"
 // Object represents an object in the game. Objects are defined in the scope of rooms and generated
 // by the room scripts.
 type Object struct {
-	CallRecv ScriptCallReceiver // The script call receiver of the object
-	Class    ObjectClass        // The classes the object belongs to as OR-ed bit flags
-	Hotspot  Rectangle          // The hotspot of the object (for mouse interaction)
-	Name     string             // The name of the object as seen by the player
-	Owner    *Actor             // The actor that owns the object, or nil if not picked up
-	Pos      Position           // The position of the object in its room (for rendering)
-	Room     *Room              // The room where the object is declared, and where actions code resides
-	Sprites  ResourceRef        // The reference to the sprites of the object
-	States   []*ObjectState     // The states the object can be in
-	UseDir   Direction          // The direction the actor when using the object
-	UsePos   Position           // The position the actor was when using the object
+	CallRecv ScriptCallReceiver      // The script call receiver of the object
+	Class    ObjectClass             // The classes the object belongs to as OR-ed bit flags
+	Hotspot  Rectangle               // The hotspot of the object (for mouse interaction)
+	Name     string                  // The name of the object as seen by the player
+	Owner    *Actor                  // The actor that owns the object, or nil if not picked up
+	Pos      Position                // The position of the object in its room (for rendering)
+	Room     *Room                   // The room where the object is declared, and where actions code resides
+	Sprites  ResourceRef             // The reference to the sprites of the object
+	State    string                  // The current state of the object
+	States   map[string]*ObjectState // The states the object can be in
+	UseDir   Direction               // The direction the actor when using the object
+	UsePos   Position                // The position the actor was when using the object
 
 	sprites *SpriteSheet // The sprites of the object
-	state   int          // The current state of the object
+}
+
+// NewObject creates a new object.
+func NewObject() *Object {
+	return &Object{
+		States: make(map[string]*ObjectState),
+	}
 }
 
 // Caption returns the name of the object.
@@ -33,10 +40,7 @@ func (o *Object) ItemClass() ObjectClass {
 
 // CurrentState returns the current state of the object.
 func (o *Object) CurrentState() *ObjectState {
-	if o.state < 0 || o.state >= len(o.States) {
-		return nil
-	}
-	return o.States[o.state]
+	return o.States[o.State]
 }
 
 // Draw renders the object in the viewport.

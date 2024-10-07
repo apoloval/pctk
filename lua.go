@@ -718,8 +718,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 		return
 	}
 	l.DeclareEntityConstructor(ScriptEntityObject, "object", func(l *LuaInterpreter) int {
-		obj := new(Object)
-		states := make(map[string]*ObjectState)
+		obj := NewObject()
 		l.WithEachTableItem(1, func(key string) {
 			switch key {
 			case "class":
@@ -732,6 +731,8 @@ func (l *LuaInterpreter) DeclareObjectType() {
 				obj.Pos = l.CheckEntity(-1, ScriptEntityPos).(Position)
 			case "sprites":
 				obj.Sprites = l.CheckEntity(-1, ScriptEntityRef).(ResourceRef)
+			case "state":
+				obj.State = lua.CheckString(l.State, -1)
 			case "usepos":
 				obj.UsePos = l.CheckEntity(-1, ScriptEntityPos).(Position)
 			case "usedir":
@@ -740,8 +741,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 				switch l.EntityTypeOf(-1) {
 				case ScriptEntityState:
 					st := l.CheckEntity(-1, ScriptEntityState).(*ObjectState)
-					obj.States = append(obj.States, st)
-					states[key] = st
+					obj.States[key] = st
 				default:
 					lua.ArgumentError(l.State, -1, fmt.Sprintf(
 						"unexpected field '%s' in object constructor", key))
@@ -752,7 +752,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 
 		// Set the states as fields of the object with the same key as they was declared in the
 		// constructor input.
-		for k, st := range states {
+		for k, st := range obj.States {
 			l.PushEntity(ScriptEntityState, st)
 			l.SetField(-2, k)
 		}
