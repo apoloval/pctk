@@ -20,6 +20,21 @@ type Future interface {
 	IsCompleted() bool
 }
 
+// AlreadyFailed creates a future that is already failed.
+func AlreadyFailed(err error) Future {
+	return alreadyFailed{err}
+}
+
+type alreadyFailed struct{ error }
+
+func (f alreadyFailed) Wait() (any, error) {
+	return nil, error(error(f))
+}
+
+func (f alreadyFailed) IsCompleted() bool {
+	return true
+}
+
 // Continue continues a future with another future. This will wait for future f and call g once f is
 // completed, returning the result of g. If f is nil, g will be called with nil and its future will
 // be returned. If f fails with an error, the resulting future will fail without calling g.

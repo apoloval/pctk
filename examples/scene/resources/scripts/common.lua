@@ -1,42 +1,53 @@
-magenta = { r = 0xAA, g = 0x00, b = 0xAA }
-yellow = { r = 0xFF, g = 0xFF, b = 0x55 }
-white = { r = 0xFF, g = 0xFF, b = 0xFF }
 
-guybrush = actor {
-    name = "guybrush",
-    costume = "resources:costumes/Guybrush",
-    talkcolor = white
+
+
+export { 
+    magenta = color { r = 0xAA, g = 0x00, b = 0xAA },
+    yellow = color { r = 0xFF, g = 0xFF, b = 0x55 },
+    white = color { r = 0xFF, g = 0xFF, b = 0xFF },
 }
 
-music1 = music { ref = "resources:audio/OnTheHill" }
-music2 = music { ref = "resources:audio/GuitarNoodling" }
-cricket = sound { ref = "resources:audio/Cricket" }
+export {
+    guybrush = actor {
+        name = "guybrush",
+        costume = ref("resources:costumes/Guybrush"),
+        talkcolor = white,
+    },
+}
 
-function default.pickup()
+export {
+    music1 = music("resources:audio/OnTheHill"),
+    music2 = music("resources:audio/GuitarNoodling"),
+    cricket = sound("resources:audio/Cricket"),
+}
+
+DEFAULT = defaults()
+
+function DEFAULT.pickup()
     guybrush:say("I can't pick that up.")
 end
 
-function default.use()
+function DEFAULT.use()
     guybrush:say("I can't use that.")
 end
 
-function default.open()
+function DEFAULT.open()
     guybrush:say("I can't open that.")
 end
 
-function default.close()
+function DEFAULT.close()
     guybrush:say("I can't close that.")
 end
 
-function default.pull()
+function DEFAULT.pull()
     guybrush:say("I can't pull that.")
 end
 
-function default.push()
+function DEFAULT.push()
     guybrush:say("I can't push that.")
 end
 
-function default.talkto(what)
+function DEFAULT.talkto(what)
     if what.__type == "actor" then
         guybrush:say("It's not time for a chat.")
     else
@@ -44,21 +55,22 @@ function default.talkto(what)
     end
 end
 
-function default.lookat()
+function DEFAULT.lookat()
     guybrush:say("There is nothing special about that.")
 end
 
-function default.turnon()
+function DEFAULT.turnon()
     guybrush:say("I can't turn that on.")
 end
 
-function default.turnoff()
+function DEFAULT.turnoff()
     guybrush:say("I can't turn that off.")
 end
 
-function default.give()
+function DEFAULT.give()
     guybrush:say("I can't give that.")
 end
 
-function default.walkto()    
+function DEFAULT.walkto()    
 end
+

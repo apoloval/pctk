@@ -9,7 +9,7 @@ import (
 
 // MusicData is the data for a music resource.
 type MusicData struct {
-	Resource *pctk.Music
+	Resource *pctk.MusicTrack
 
 	workingDir string
 }

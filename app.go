@@ -12,12 +12,13 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	actors  map[string]*Actor
-	dialogs []Dialog
-	objects []*Object
-	rooms   map[string]*Room
-	room    *Room
-	scripts map[ResourceRef]*Script
+	actors   []*Actor
+	defaults *ObjectDefaults
+	dialogs  []Dialog
+	objects  []*Object
+	rooms    []*Room
+	room     *Room
+	scripts  map[ResourceRef]*Script
 
 	control  ControlPane
 	commands CommandQueue
@@ -34,8 +35,6 @@ type App struct {
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
 		res:     resources,
-		actors:  make(map[string]*Actor),
-		rooms:   make(map[string]*Room),
 		scripts: make(map[ResourceRef]*Script),
 	}
 
@@ -51,7 +50,7 @@ func New(resources ResourceLoader, opts ...AppOption) *App {
 
 // Close closes the application.
 func (a *App) Close() {
-	a.unloadMusic()
+	a.StopMusic()
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }

@@ -1,23 +1,26 @@
 package pctk
 
 import (
+	"errors"
 	"log"
 	"slices"
 )
 
 // Room represents a room in the game.
 type Room struct {
-	actors     []*Actor       // The actors in the room
-	background *Image         // The background image of the room
-	id         string         // The ID of the room
-	objects    []*Object      // The objects declared in the room
-	script     *Script        // The script where this room is defined. Used to call the room functions.
-	wbmatrix   *WalkBoxMatrix // The wbmatrix defines the walkable areas within the room and their adjacency.
+	Background ResourceRef // The reference to the background image
+
+	actors     []*Actor           // The actors in the room
+	background *Image             // The background image of the room
+	callrecv   ScriptCallReceiver // The call receiver for the room
+	objects    []*Object          // The objects declared in the room
+	script     *Script            // The script where this room is defined. Used to call the room functions.
+	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
 
 // NewRoom creates a new room with the given background image.
 func NewRoom(bg *Image) *Room {
-	if bg.Width() < ScreenWidth || bg.Height() < ViewportHeight {
+	if bg != nil && (bg.Width() < ScreenWidth || bg.Height() < ViewportHeight) {
 		log.Fatal("Background image is too small")
 	}
 	return &Room{
@@ -25,18 +28,9 @@ func NewRoom(bg *Image) *Room {
 	}
 }
 
-// RoomByID returns the room with the given ID, panicking if not found.
-func (a *App) RoomByID(id string) *Room {
-	room, ok := a.rooms[id]
-	if !ok {
-		log.Fatalf("Room %s not found", id)
-	}
-	return room
-}
-
 // DeclareObject declares an object in the room.
 func (r *Room) DeclareObject(obj *Object) {
-	obj.room = r
+	obj.Room = r
 	r.objects = append(r.objects, obj)
 	// TODO testing purpose
 	box0 := NewWalkBox("walkbox0", [4]Positionf{{5, 140}, {320, 140}, {270, 110}, {80, 110}}, 1)
@@ -65,7 +59,7 @@ func (r *Room) Draw() {
 		items = append(items, obj)
 	}
 	slices.SortFunc(items, func(a, b RoomItem) int {
-		return a.Position().Y - b.Position().Y
+		return a.ItemPosition().Y - b.ItemPosition().Y
 	})
 	for _, item := range items {
 		item.Draw()
@@ -73,6 +67,19 @@ func (r *Room) Draw() {
 
 	// TODO if Debug Mode
 	r.wbmatrix.Draw()
+}
+
+// Load the room resources.
+func (r *Room) Load(res ResourceLoader) {
+	if r.background == nil {
+		r.background = res.LoadImage(r.Background)
+		if r.background == nil {
+			log.Fatalf("Background image not found: %s", r.Background)
+		}
+	}
+	for _, obj := range r.objects {
+		obj.Load(res)
+	}
 }
 
 // ItemAt returns the item at the given position in the room.
@@ -86,7 +93,7 @@ func (r *Room) ItemAt(pos Position) RoomItem {
 		}
 	}
 	for _, obj := range r.objects {
-		if obj.IsVisible() && obj.hotspot.Contains(pos) {
+		if obj.IsVisible() && obj.Hotspot.Contains(pos) {
 			return obj
 		}
 	}
@@ -96,7 +103,7 @@ func (r *Room) ItemAt(pos Position) RoomItem {
 // ObjectByID returns the object with the given ID, or nil if not found.
 func (r *Room) ObjectByID(id string) *Object {
 	for _, obj := range r.objects {
-		if obj.name == id {
+		if obj.Name == id {
 			return obj
 		}
 	}
@@ -105,7 +112,7 @@ func (r *Room) ObjectByID(id string) *Object {
 
 // PutActor puts an actor in the room.
 func (r *Room) PutActor(actor *Actor) {
-	actor.room = r
+	actor.Room = r
 	for _, act := range r.actors {
 		if act == actor {
 			return
@@ -116,34 +123,57 @@ func (r *Room) PutActor(actor *Actor) {
 
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
-	Class() ObjectClass
+	CallReceiver() ScriptCallReceiver
+	Caption() string
 	Draw()
-	Name() string
-	Position() Position
-	UsePosition() (Position, Direction)
+	ItemClass() ObjectClass
+	ItemOwner() *Actor
+	ItemPosition() Position
+	ItemUsePosition() (Position, Direction)
 }
 
-// FindRoom returns the room with the given ID, or nil if not found.
-func (a *App) FindRoom(id string) *Room {
-	room, ok := a.rooms[id]
-	if !ok {
-		return nil
+// DeclareRoom declares a new room in the application.
+func (a *App) DeclareRoom(room *Room) error {
+	for _, r := range a.rooms {
+		if r == room {
+			return errors.New("Room already declared")
+		}
 	}
-	return room
+	a.rooms = append(a.rooms, room)
+	return nil
 }
 
 // StartRoom starts the given room in the application.
-func (a *App) StartRoom(room *Room) {
-	if room == nil {
-		log.Fatal("Room is nil")
-	}
+func (a *App) StartRoom(room *Room) Future {
+	var job Future
 	for _, r := range a.rooms {
 		if r == room {
+			if a.room != nil {
+				job = RecoverWithValue(
+					a.room.script.CallMethod(a.room.callrecv, "exit", nil),
+					func(err error) any {
+						log.Printf("Failed to call room exit function: %v", err)
+						return nil
+					},
+				)
+			}
 			a.room = room
-			return
+			room.Load(a.res)
+			job = Continue(job, func(a any) Future {
+				return RecoverWithValue(
+					room.script.CallMethod(room.callrecv, "enter", nil),
+					func(err error) any {
+						log.Printf("Failed to call room enter function: %v", err)
+						return nil
+					},
+				)
+			})
+			return job
 		}
 	}
-	log.Fatalf("Room %s not declared", room.id)
+	prom := NewPromise()
+	prom.CompleteWithErrorf("Room not declared")
+	return prom
 }
 
 func (a *App) drawSceneViewport() {
