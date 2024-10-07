@@ -16,7 +16,7 @@ type App struct {
 
 	screenCaption string
 	screenZoom    int32
-	flags         uint32
+	debugMode     bool
 	debugEnabled  bool
 
 	actors  map[string]*Actor

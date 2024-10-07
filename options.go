@@ -13,16 +13,11 @@ func WithScreenZoom(zoom int32) AppOption {
 	return func(a *App) { a.screenZoom = zoom }
 }
 
-// WithFlag allows you to enable or disable specific flags in the application.
-func WithFlag(flag uint32) AppOption {
+// WithDebugMode allows you to enable the debug mode.
+func WithDebugMode() AppOption {
 	return func(a *App) {
-		a.flags |= flag
+		a.debugMode = true
 	}
-}
-
-// IsFlagEnabled checks if a specific flag is enabled.
-func (a *App) IsFlagEnabled(flag uint32) bool {
-	return a.flags&flag != 0
 }
 
 var defaultAppOptions = []AppOption{
