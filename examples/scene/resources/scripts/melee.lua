@@ -24,6 +24,7 @@ export {
                 anim = fixedanim { row = 6, col = 5},
             },
             pickup = state {},
+            state = "default"
         },
         clock = object {
             name = "clock",
