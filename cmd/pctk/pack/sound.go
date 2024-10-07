@@ -9,7 +9,7 @@ import (
 
 // SoundData is the data for a sound resource.
 type SoundData struct {
-	Resource *pctk.Sound
+	Resource *pctk.SoundTrack
 
 	workingDir string
 }

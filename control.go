@@ -58,19 +58,19 @@ func (s VerbSlot) Draw(app *App, m *MouseCursor) {
 		if item := room.ItemAt(m.Position()); item != nil {
 			switch s.Verb {
 			case VerbOpen:
-				if item.Class().IsOneOf(ObjectClassOpenable) {
+				if item.ItemClass().IsOneOf(ObjectClassOpenable) {
 					color = ControlVerbHoverColor
 				}
 			case VerbClose:
-				if item.Class().IsOneOf(ObjectClassCloseable) {
+				if item.ItemClass().IsOneOf(ObjectClassCloseable) {
 					color = ControlVerbHoverColor
 				}
 			case VerbTalkTo:
-				if item.Class().IsOneOf(ObjectClassPerson) {
+				if item.ItemClass().IsOneOf(ObjectClassPerson) {
 					color = ControlVerbHoverColor
 				}
 			case VerbLookAt:
-				if item.Class().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
+				if item.ItemClass().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
 					color = ControlVerbHoverColor
 				}
 			}
@@ -110,7 +110,7 @@ func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 
 	// Sentence incompleted. Check if hover exists and must be added to the sentence.
 	if s.admits(hover) {
-		action = action + " " + hover.Name()
+		action = action + " " + hover.Caption()
 	}
 	DrawDefaultText(action, pos, AlignCenter, color)
 }
@@ -123,7 +123,7 @@ func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
 	}
 	switch s.verb {
 	case VerbUse, VerbGive:
-		if obj.Class().IsOneOf(ObjectClassApplicable) {
+		if obj.ItemClass().IsOneOf(ObjectClassApplicable) {
 			s.args[0] = obj
 			return
 		}
@@ -142,7 +142,7 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 	if s.admits(item) {
 		if s.args[0] == nil {
 			// Item is candidate to first argument.
-			if s.verb == VerbUse && item.Class().IsAllOf(ObjectClassApplicable) {
+			if s.verb == VerbUse && item.ItemClass().IsAllOf(ObjectClassApplicable) {
 				// Special case for use verb on a room item that is applicable.
 				s.args[0] = item
 				return
@@ -159,11 +159,11 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomItem) {
 	if item != nil {
 		// Execute quick action
-		if item.Class().IsOneOf(ObjectClassPerson) {
+		if item.ItemClass().IsOneOf(ObjectClassPerson) {
 			s.interactWith(app, VerbTalkTo, item, nil)
-		} else if item.Class().IsOneOf(ObjectClassOpenable) {
+		} else if item.ItemClass().IsOneOf(ObjectClassOpenable) {
 			s.interactWith(app, VerbOpen, item, nil)
-		} else if item.Class().IsOneOf(ObjectClassCloseable) {
+		} else if item.ItemClass().IsOneOf(ObjectClassCloseable) {
 			s.interactWith(app, VerbClose, item, nil)
 		} else {
 			s.interactWith(app, VerbLookAt, item, nil)
@@ -184,24 +184,24 @@ func (s *ActionSentence) admits(item RoomItem) bool {
 		// Item is candidate to first argument.
 		switch s.verb {
 		case VerbTalkTo:
-			return item.Class().IsOneOf(ObjectClassPerson)
+			return item.ItemClass().IsOneOf(ObjectClassPerson)
 		case VerbOpen, VerbClose, VerbPickUp, VerbGive, VerbTurnOn, VerbTurnOff:
-			return !item.Class().IsOneOf(ObjectClassPerson)
+			return !item.ItemClass().IsOneOf(ObjectClassPerson)
 		case VerbUse:
-			return !item.Class().IsOneOf(ObjectClassPerson)
+			return !item.ItemClass().IsOneOf(ObjectClassPerson)
 		default:
 			return true
 		}
 	}
 
 	// Item is candidate to second argument.
-	if !s.args[0].Class().IsOneOf(ObjectClassApplicable) || item == s.args[0] {
+	if !s.args[0].ItemClass().IsOneOf(ObjectClassApplicable) || item == s.args[0] {
 		// First argument is not applicable or is the same item.
 		return false
 	}
 	switch s.verb {
 	case VerbGive:
-		return item.Class().IsOneOf(ObjectClassPerson)
+		return item.ItemClass().IsOneOf(ObjectClassPerson)
 	default:
 		return true
 	}
@@ -210,10 +210,10 @@ func (s *ActionSentence) admits(item RoomItem) bool {
 func (s *ActionSentence) line() string {
 	line := string(s.verb)
 	if s.args[0] != nil {
-		line += " " + s.args[0].Name()
+		line += " " + s.args[0].Caption()
 		switch s.verb {
 		case VerbUse:
-			if s.args[0].Class().IsOneOf(ObjectClassApplicable) {
+			if s.args[0].ItemClass().IsOneOf(ObjectClassApplicable) {
 				line += " with"
 			}
 		case VerbGive:
@@ -221,7 +221,7 @@ func (s *ActionSentence) line() string {
 		}
 	}
 	if s.args[1] != nil {
-		line += " " + s.args[1].Name()
+		line += " " + s.args[1].Caption()
 	}
 	return line
 }
@@ -286,7 +286,7 @@ func (c *ControlInventory) Draw(app *App, m *MouseCursor) {
 		if rect.Contains(mpos) {
 			color = ControlInventoryHoverColor
 		}
-		DrawDefaultText(item.Name(), rect.Pos, AlignLeft, color)
+		DrawDefaultText(item.Caption(), rect.Pos, AlignLeft, color)
 	}
 }
 

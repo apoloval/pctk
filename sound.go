@@ -9,17 +9,45 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Sound source type
+// Sound is a resource that represents a sound.
 type Sound struct {
+	ref   ResourceRef
+	track *SoundTrack
+}
+
+// LoadSound loads the sound from the given resource reference.
+func NewSound(ref ResourceRef) *Sound {
+	return &Sound{ref: ref}
+}
+
+// Play plays the sound.
+func (s *Sound) Play(app *App) {
+	if s.track == nil {
+		track := app.res.LoadSound(s.ref)
+		if track == nil {
+			log.Fatalf("sound not found: %s", s.ref)
+		}
+		s.track = track
+	}
+	rl.PlaySound(s.track.raw)
+}
+
+// Stop stops the sound.
+func (s *Sound) Stop(app *App) {
+	rl.StopSound(s.track.raw)
+}
+
+// SoundTrack source type
+type SoundTrack struct {
 	data   []byte
 	raw    rl.Sound
 	format [4]byte
 }
 
 // LoadSoundFromFile - Load sound stream from a file path
-func LoadSoundFromFile(path string) *Sound {
+func LoadSoundFromFile(path string) *SoundTrack {
 	var err error
-	sound := new(Sound)
+	sound := new(SoundTrack)
 
 	sound.data, err = os.ReadFile(path)
 	if err != nil {
@@ -35,12 +63,12 @@ func LoadSoundFromFile(path string) *Sound {
 //   - [4]byte: data format
 //   - uint32: data length
 //   - []byte: data
-func (s *Sound) BinaryEncode(w io.Writer) (int, error) {
+func (s *SoundTrack) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, s.format[:], uint32(len(s.data)), s.data)
 }
 
 // BinaryDecode decodes the sound data from a binary stream. See Sound.BinaryEncode for the format.
-func (s *Sound) BinaryDecode(r io.Reader) error {
+func (s *SoundTrack) BinaryDecode(r io.Reader) error {
 	var format [4]byte
 	var length uint32
 	if err := BinaryDecode(r, &format, &length); err != nil {
@@ -57,23 +85,4 @@ func (s *Sound) BinaryDecode(r io.Reader) error {
 	wav := rl.LoadWaveFromMemory(string(format[:]), data, int32(length))
 	s.raw = rl.LoadSoundFromWave(wav)
 	return nil
-}
-
-func (a *App) isSoundReady() bool {
-	return a.sound != nil && rl.IsSoundReady(a.sound.raw)
-}
-
-// PlaySound loads and plays the sound from the given resource reference.
-func (a *App) PlaySound(ref ResourceRef) {
-	a.sound = a.res.LoadSound(ref)
-	if a.isSoundReady() {
-		rl.PlaySound(a.sound.raw)
-	}
-}
-
-// StopSound stops the current sound.
-func (a *App) StopSound() {
-	if a.isSoundReady() {
-		rl.StopSound(a.sound.raw)
-	}
 }

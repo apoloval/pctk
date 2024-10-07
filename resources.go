@@ -107,14 +107,14 @@ type ResourceLoader interface {
 
 	// LoadMusic loads a music song from the given ref. It returns nil if the music is not
 	// found.
-	LoadMusic(ref ResourceRef) *Music
+	LoadMusic(ref ResourceRef) *MusicTrack
 
 	// LoadScript loads a script from the given ref. It returns nil if the script is not found.
 	LoadScript(ref ResourceRef) *Script
 
 	// LoadSound loads a sound effect from he given ref. It returns nil if the sound is not
 	// found.
-	LoadSound(ref ResourceRef) *Sound
+	LoadSound(ref ResourceRef) *SoundTrack
 
 	// LoadSpriteSheet loads a sprite sheet from the given ref. It returns nil if the sprite
 	// sheet is not found.
@@ -126,9 +126,9 @@ type ResourceLoader interface {
 type ResourceBundle struct {
 	costumes map[ResourceRef]*Costume
 	images   map[ResourceRef]*Image
-	music    map[ResourceRef]*Music
+	music    map[ResourceRef]*MusicTrack
 	scripts  map[ResourceRef]*Script
-	sounds   map[ResourceRef]*Sound
+	sounds   map[ResourceRef]*SoundTrack
 	sprites  map[ResourceRef]*SpriteSheet
 }
 
@@ -137,9 +137,9 @@ func NewResourceBundle() *ResourceBundle {
 	return &ResourceBundle{
 		costumes: make(map[ResourceRef]*Costume),
 		images:   make(map[ResourceRef]*Image),
-		music:    make(map[ResourceRef]*Music),
+		music:    make(map[ResourceRef]*MusicTrack),
 		scripts:  make(map[ResourceRef]*Script),
-		sounds:   make(map[ResourceRef]*Sound),
+		sounds:   make(map[ResourceRef]*SoundTrack),
 		sprites:  make(map[ResourceRef]*SpriteSheet),
 	}
 }
@@ -155,7 +155,7 @@ func (c *ResourceBundle) PutImage(ref ResourceRef, img *Image) {
 }
 
 // PutMusic adds a music song to the bundle.
-func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
+func (c *ResourceBundle) PutMusic(ref ResourceRef, m *MusicTrack) {
 	c.music[ref] = m
 }
 
@@ -165,7 +165,7 @@ func (c *ResourceBundle) PutScript(ref ResourceRef, s *Script) {
 }
 
 // PutSound adds a sound to the bundle.
-func (c *ResourceBundle) PutSound(ref ResourceRef, s *Sound) {
+func (c *ResourceBundle) PutSound(ref ResourceRef, s *SoundTrack) {
 	c.sounds[ref] = s
 }
 
@@ -185,7 +185,7 @@ func (c *ResourceBundle) LoadImage(ref ResourceRef) *Image {
 }
 
 // LoadMusic loads a music song from the given ref. It returns nil if the music is not found.
-func (c *ResourceBundle) LoadMusic(ref ResourceRef) *Music {
+func (c *ResourceBundle) LoadMusic(ref ResourceRef) *MusicTrack {
 	return c.music[ref]
 }
 
@@ -195,7 +195,7 @@ func (c *ResourceBundle) LoadScript(ref ResourceRef) *Script {
 }
 
 // LoadSound loads a sound effect from he given ref. It returns nil if the sound is not found.
-func (c *ResourceBundle) LoadSound(ref ResourceRef) *Sound {
+func (c *ResourceBundle) LoadSound(ref ResourceRef) *SoundTrack {
 	return c.sounds[ref]
 }
 

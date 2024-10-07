@@ -3,11 +3,111 @@ package pctk
 import (
 	"io"
 	"log"
-	"strings"
 	"sync"
 
-	"github.com/Shopify/go-lua"
+	"github.com/google/uuid"
 )
+
+// ScriptEntityType is the type of a user data entity in a script.
+type ScriptEntityType string
+
+const (
+	// ScriptEntityActor is the type of an Actor entity.
+	ScriptEntityActor ScriptEntityType = "actor"
+
+	// ScriptEntityAnimation is the type of an Animation entity.
+	ScriptEntityAnimation ScriptEntityType = "animation"
+
+	// ScriptEntityClass is the type of an ObjectClass entity.
+	ScriptEntityClass ScriptEntityType = "class"
+
+	// ScriptEntityColor is the type of a Color entity.
+	ScriptEntityColor ScriptEntityType = "color"
+
+	// ScriptEntityDir is the type of a Direction entity.
+	ScriptEntityDir ScriptEntityType = "direction"
+
+	// ScriptEntityFuture is the type of a Future entity.
+	ScriptEntityFuture ScriptEntityType = "future"
+
+	// ScriptEntityMusic is the type of a Music entity.
+	ScriptEntityMusic ScriptEntityType = "music"
+
+	// ScriptEntityObject is the type of an Object entity.
+	ScriptEntityObject ScriptEntityType = "object"
+
+	// ScriptEntityObjectDefaults is the type of an ObjectDefaults entity.
+	ScriptEntityObjectDefaults ScriptEntityType = "defaults"
+
+	// ScriptEntityPos is the type of a Position entity.
+	ScriptEntityPos ScriptEntityType = "position"
+
+	// ScriptEntityRect is the type of a Rectangle entity.
+	ScriptEntityRect ScriptEntityType = "rect"
+
+	// ScriptEntityRef is the type of a ResourceRef entity.
+	ScriptEntityRef ScriptEntityType = "ref"
+
+	// ScriptEntityRoom is the type of a Room entity.
+	ScriptEntityRoom ScriptEntityType = "room"
+
+	// ScriptEntitySize is the type of a Size entity.
+	ScriptEntitySize ScriptEntityType = "size"
+
+	// ScriptEntitySound is the type of a Sound entity.
+	ScriptEntitySound ScriptEntityType = "sound"
+
+	// ScriptEntityState is the type of an ObjectState entity.
+	ScriptEntityState ScriptEntityType = "state"
+)
+
+// RegistryName returns the name of the entity type in the Lua registry.
+func (t ScriptEntityType) RegistryName() string {
+	return "pctk." + string(t)
+}
+
+// String returns the string representation of the entity type.
+func (t ScriptEntityType) String() string {
+	return string(t)
+}
+
+// ScriptEntityValue is a value from a script that is visible by other scripts.
+type ScriptEntityValue struct {
+	// EntityType is the type of the script entity value.
+	Type ScriptEntityType
+
+	// UserData is user data of the script entity value.
+	UserData any
+}
+
+// ScriptNamedEntityValue is a name and value from a script that is visible by other scripts.
+type ScriptNamedEntityValue struct {
+	ScriptEntityValue
+
+	// Name is the name of the script entity value.
+	Name string
+}
+
+// ScriptEntityHandler is a function to handle a script entity.
+type ScriptEntityHandler func(exp ScriptNamedEntityValue)
+
+// ScriptImportHandler is a function that can be called from Lua using the interpreter to import
+// entity values from other scripts. The handler will be called with each exported entity from the
+// script.
+type ScriptImportHandler func(script ResourceRef, handler ScriptEntityHandler)
+
+// ScriptCallReceiver is the identifier of a script element that can receive function calls.
+type ScriptCallReceiver string
+
+// NewScriptCallReceiver creates a new script instance identifier.
+func NewScriptCallReceiver() ScriptCallReceiver {
+	return ScriptCallReceiver(uuid.New().String())
+}
+
+// String returns the string representation of the script instance identifier.
+func (id ScriptCallReceiver) String() string {
+	return string(id)
+}
 
 // ScriptLanguage represents the language of a script.
 type ScriptLanguage byte
@@ -25,10 +125,11 @@ type Script struct {
 	Language ScriptLanguage
 	Code     []byte
 
-	mutex     sync.Mutex
-	ref       ResourceRef
-	l         *lua.State
-	including bool
+	mutex   sync.Mutex
+	ref     ResourceRef
+	exports []ScriptNamedEntityValue
+
+	lua *LuaInterpreter
 }
 
 // NewScript creates a new script.
@@ -39,14 +140,36 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 	}
 }
 
-// Call a  script function. The script must be run before calling this method.
-func (s *Script) Call(f FieldAccessor, args []any, method bool) Future {
+// CallFunction calls a function in the script with the given arguments.
+func (s *Script) CallFunction(
+	recv ScriptCallReceiver,
+	function string,
+	args []ScriptEntityValue,
+) Future {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	switch s.Language {
 	case ScriptLua:
-		return s.luaCall(f, args, method)
+		return s.luaCallFunction(recv, function, args)
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+		return nil
+	}
+}
+
+// CallMethod calls a method for a call receiver with the given arguments.
+func (s *Script) CallMethod(
+	recv ScriptCallReceiver,
+	method string,
+	args []ScriptEntityValue,
+) Future {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	switch s.Language {
+	case ScriptLua:
+		return s.luaCallMethod(recv, method, args)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 		return nil
@@ -79,66 +202,39 @@ func (s *Script) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
+// Exports returns the exported entities of the script.
+func (s *Script) Exports() []ScriptNamedEntityValue {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.exports
+}
+
 // Run the script. This will evaluate the code in the script, running the declarations (if any) and
 // preparing the code to receive calls.
-func (s *Script) Run(app *App, prom *Promise) {
+func (s *Script) Run(app *App) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	switch s.Language {
 	case ScriptLua:
 		s.luaInit(app)
-		s.luaRun(app, prom)
+		s.luaRun(app)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 	}
 }
 
-// FieldAccessor is a sequence of identifiers that references a field in a chain of tables.
-type FieldAccessor []string
-
-// WithField creates a new FieldAccessor with the given parts.
-func WithField(global string, fields ...string) FieldAccessor {
-	return append(FieldAccessor{global}, fields...)
-}
-
-// WithActorField creates a new FieldAccessor pointing to an actor value.
-func WithActorField(actor *Actor, fields ...string) FieldAccessor {
-	return WithField(actor.id, fields...)
-}
-
-// WithObjectField creates a new FieldAccessor pointing to an object value.
-func WithObjectField(obj *Object, fields ...string) FieldAccessor {
-	return WithField(obj.id, append([]string{"objects"}, fields...)...)
-}
-
-// WithDefaultsField creates a new FieldAccessor pointing to the defaults object.
-func WithDefaultsField(fields ...string) FieldAccessor {
-	return WithField("DEFAULT", fields...)
-}
-
-// Append appends the given fields to the accessor.
-func (m FieldAccessor) Append(fields ...string) FieldAccessor {
-	return append(m, fields...)
-}
-
-// ForEach calls the given function for each element of the accessor.
-func (m FieldAccessor) ForEach(f func(string)) {
-	for _, part := range m {
-		f(part)
+// LoadScript loads a script from the resources. If the script is already loaded, it will return the
+// loaded script. Otherwise, it will load the script, run it, and return it.
+func (a *App) LoadScript(ref ResourceRef) *Script {
+	script, ok := a.scripts[ref]
+	if !ok {
+		script = a.res.LoadScript(ref)
+		if script == nil {
+			log.Panicf("Script not found: %s", ref)
+		}
+		script.Run(a)
 	}
-}
-
-// Base returns the base accessor of the accessor. This is the accessor without the last element.
-// If the accessor points to a global variable, it returns itself.
-func (m FieldAccessor) Base() FieldAccessor {
-	if len(m) == 1 {
-		return m
-	}
-	return m[:len(m)-1]
-}
-
-// String returns the string representation of the fields accessor.
-func (m FieldAccessor) String() string {
-	return strings.Join(m, ".")
+	return script
 }

@@ -10,17 +10,48 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Music is music and we love it!
+// Music is a entity that represents a music.
 type Music struct {
+	ref   ResourceRef
+	track *MusicTrack
+}
+
+// LoadMusic loads the music from the given resource reference.
+func NewMusic(ref ResourceRef) *Music {
+	return &Music{ref: ref}
+}
+
+// Play plays the music.
+func (m *Music) Play(app *App) {
+	if m.track == nil {
+		track := app.res.LoadMusic(m.ref)
+		if track == nil {
+			log.Fatalf("music not found: %s", m.ref)
+		}
+		m.track = track
+	}
+
+	rl.PlayMusicStream(m.track.raw)
+}
+
+// Stop stops the music.
+func (m *Music) Stop(app *App) {
+	rl.StopMusicStream(m.track.raw)
+	rl.UnloadMusicStream(m.track.raw)
+	m.track = nil
+}
+
+// MusicTrack is the data of a music entity.
+type MusicTrack struct {
 	data   []byte
 	format [4]byte
 	raw    rl.Music
 }
 
 // LoadMusicFromFile - Load music stream from a file path
-func LoadMusicFromFile(path string) *Music {
+func LoadMusicFromFile(path string) *MusicTrack {
 	var err error
-	music := new(Music)
+	music := new(MusicTrack)
 	music.data, err = os.ReadFile(path)
 	if err != nil {
 		log.Fatalf("failed to read music file: %v", err)
@@ -35,12 +66,12 @@ func LoadMusicFromFile(path string) *Music {
 //   - [4]byte: data format
 //   - uint32: data length
 //   - []byte: data
-func (m *Music) BinaryEncode(w io.Writer) (int, error) {
+func (m *MusicTrack) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, m.format[:], uint32(len(m.data)), m.data)
 }
 
 // BinaryDecode decodes the music data from a binary stream. See Music.BinaryEncode for the format.
-func (m *Music) BinaryDecode(r io.Reader) error {
+func (m *MusicTrack) BinaryDecode(r io.Reader) error {
 	var format [4]byte
 	var length uint32
 	if err := BinaryDecode(r, &format, &length); err != nil {
@@ -58,46 +89,25 @@ func (m *Music) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-// PlayMusic plays the music from the given resource.
-func (a *App) PlayMusic(ref ResourceRef) {
-	a.music = a.res.LoadMusic(ref)
-	if a.isMusicReady() {
-		rl.PlayMusicStream(a.music.raw)
+// PlayMusic plays the music.
+func (a *App) PlayMusic(music *Music) {
+	if a.music != nil {
+		a.music.Stop(a)
 	}
+	a.music = music
+	a.music.Play(a)
 }
 
-// PauseMusic pauses the music being played.
-func (a *App) PauseMusic() {
-	if a.isMusicReady() {
-		rl.PauseMusicStream(a.music.raw)
-	}
-}
-
-// ResumeMusic resumes the music being played. It must be paused first.
-func (a *App) ResumeMusic() {
-	if a.isMusicReady() {
-		rl.ResumeMusicStream(a.music.raw)
-	}
-}
-
-// StopMusic stops the music being played.
+// StopMusic stops the music.
 func (a *App) StopMusic() {
-	if a.isMusicReady() {
-		rl.StopMusicStream(a.music.raw)
+	if a.music != nil {
+		a.music.Stop(a)
+		a.music = nil
 	}
 }
 
 func (a *App) updateMusic() {
-	if a.isMusicReady() {
-		rl.UpdateMusicStream(a.music.raw)
+	if a.music != nil {
+		rl.UpdateMusicStream(a.music.track.raw)
 	}
-}
-
-func (a *App) unloadMusic() {
-	if a.isMusicReady() {
-		rl.UnloadMusicStream(a.music.raw)
-	}
-}
-func (a *App) isMusicReady() bool {
-	return a.music != nil && rl.IsMusicReady(a.music.raw)
 }

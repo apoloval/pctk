@@ -139,7 +139,7 @@ func (e *ResourceEncoder) EncodeImage(id ResourceID, i *Image, comp ResourceComp
 }
 
 // EncodeMusic encodes a music using the resource encoder.
-func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *Music, comp ResourceCompression) error {
+func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *MusicTrack, comp ResourceCompression) error {
 	return e.encodeResource(id, m, resourceHeader{
 		Type:        resourceTypeMusic,
 		Compression: comp,
@@ -155,7 +155,7 @@ func (e *ResourceEncoder) EncodeScript(id ResourceID, s *Script, comp ResourceCo
 }
 
 // EncodeSound encodes a sound using the resource encoder.
-func (e *ResourceEncoder) EncodeSound(id ResourceID, s *Sound, comp ResourceCompression) error {
+func (e *ResourceEncoder) EncodeSound(id ResourceID, s *SoundTrack, comp ResourceCompression) error {
 	return e.encodeResource(id, s, resourceHeader{
 		Type:        resourceTypeSound,
 		Compression: comp,
@@ -271,20 +271,21 @@ func (l *ResourceFileLoader) LoadImage(ref ResourceRef) *Image {
 	return img
 }
 
-func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *Music {
-	m := new(Music)
+func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *MusicTrack {
+	m := new(MusicTrack)
 	l.decodeResource(ref, resourceTypeMusic, m)
 	return m
 }
 
 func (l *ResourceFileLoader) LoadScript(ref ResourceRef) *Script {
 	script := new(Script)
+	script.ref = ref
 	l.decodeResource(ref, resourceTypeScript, script)
 	return script
 }
 
-func (l *ResourceFileLoader) LoadSound(ref ResourceRef) *Sound {
-	sound := new(Sound)
+func (l *ResourceFileLoader) LoadSound(ref ResourceRef) *SoundTrack {
+	sound := new(SoundTrack)
 	l.decodeResource(ref, resourceTypeSound, sound)
 	return sound
 }
