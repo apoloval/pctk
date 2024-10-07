@@ -4,11 +4,6 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const (
-	DebugModeFlag = 1 << iota
-	// TODO: support other flags like ResizableFlag, FullScreenFlag...
-)
-
 // App is the pctk application. It is the main struct that holds all the context necessary to run
 // the application.
 type App struct {
