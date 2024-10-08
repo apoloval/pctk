@@ -1,4 +1,3 @@
-include("resources:scripts/common")
-include("resources:scripts/melee")
+melee = import("resources:scripts/melee")
 
-melee:show()
+melee.melee:show()

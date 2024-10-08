@@ -1,16 +1,27 @@
-magenta = { r = 0xAA, g = 0x00, b = 0xAA }
-yellow = { r = 0xFF, g = 0xFF, b = 0x55 }
-white = { r = 0xFF, g = 0xFF, b = 0xFF }
 
-guybrush = actor {
-    name = "guybrush",
-    costume = "resources:costumes/Guybrush",
-    talkcolor = white
+
+
+export { 
+    magenta = color { r = 0xAA, g = 0x00, b = 0xAA },
+    yellow = color { r = 0xFF, g = 0xFF, b = 0x55 },
+    white = color { r = 0xFF, g = 0xFF, b = 0xFF },
 }
 
-music1 = music { ref = "resources:audio/OnTheHill" }
-music2 = music { ref = "resources:audio/GuitarNoodling" }
-cricket = sound { ref = "resources:audio/Cricket" }
+export {
+    guybrush = actor {
+        name = "guybrush",
+        costume = ref("resources:costumes/Guybrush"),
+        talkcolor = white,
+    },
+}
+
+export {
+    music1 = music("resources:audio/OnTheHill"),
+    music2 = music("resources:audio/GuitarNoodling"),
+    cricket = sound("resources:audio/Cricket"),
+}
+
+DEFAULT = defaults()
 
 function DEFAULT.pickup()
     guybrush:say("I can't pick that up.")
@@ -62,3 +73,4 @@ end
 
 function DEFAULT.walkto()    
 end
+
