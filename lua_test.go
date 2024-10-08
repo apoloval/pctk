@@ -156,28 +156,25 @@ func TestDeclareReferenceType(t *testing.T) {
 	`))
 }
 
-/*
-// TODO: Should be fixed
+func TestDeclareRoomType(t *testing.T) {
+	l := NewLuaInterpreter()
+	lua.BaseOpen(l.State)
 
-	func TestDeclareRoomType(t *testing.T) {
-		l := NewLuaInterpreter()
-		lua.BaseOpen(l.State)
+	app := New(NewResourceBundle())
+	l.DeclareRoomType(app, nil)
 
-		app := New(NewResourceBundle())
-		l.DeclareRoomType(app, nil)
+	assert.NoError(t, lua.DoString(l.State, `
+		r = room { 
+			background = ref("resources:/backgrounds/foobar"),
+			window = object {
+				name = "broken window",
+			},
+		}
+		assert(r.background == ref("resources:/backgrounds/foobar"))
+		assert(r.window.name == "broken window")
+	`))
+}
 
-		assert.NoError(t, lua.DoString(l.State, `
-			r = room {
-				background = ref("resources:/backgrounds/foobar"),
-				window = object {
-					name = "broken window",
-				},
-			}
-			assert(r.background == ref("resources:/backgrounds/foobar"))
-			assert(r.window.name == "broken window")
-		`))
-	}
-*/
 func TestDeclareSizeType(t *testing.T) {
 	l := NewLuaInterpreter()
 	lua.BaseOpen(l.State)
