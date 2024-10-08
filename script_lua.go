@@ -10,6 +10,7 @@ import (
 func (s *Script) luaInit(app *App) {
 	if s.lua == nil {
 		s.lua = NewLuaInterpreter()
+		lua.BaseOpen(s.lua.State)
 		s.lua.DeclareActorType(app, s)
 		s.lua.DeclareColorType()
 		s.lua.DeclareControlFunctions(app)
@@ -21,6 +22,7 @@ func (s *Script) luaInit(app *App) {
 		s.lua.DeclarePositionType()
 		s.lua.DeclareRectType()
 		s.lua.DeclareRoomType(app, s)
+		s.lua.DeclareSentenceChoiceType(app)
 		s.lua.DeclareSizeType()
 		s.lua.DeclareSoundType(app)
 

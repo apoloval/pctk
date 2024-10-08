@@ -36,7 +36,7 @@ export {
 }
 
 function melee:enter()
-    local skipintro = false
+    local skipintro = true
 
     pirates:show {
         pos = pos {x=38, y=137},         
@@ -143,5 +143,33 @@ function pirates:lookat()
 end
 
 function pirates:talkto()
-    guybrush:say("Now they are busy.\nI will not disturb them.")
+    while true do
+        local choice = sentencechoice()
+        choice:add("Hello, guys! Are you really sure you don't have the keys?")
+        choice:add("I'm sure you have them! I know you!")
+        choice:add("I'm Guybrush Threepwood, mighty pirate!")
+        choice:add("I think I will go to the Scumm bar. See you!")
+        local s = choice:waitsay()
+        if s == 1 then
+            pirates:say("Yes, we are sure!"):wait()
+            pirates:say(
+                "If we had them, we would\nhave left this place long ago!",
+                { color = common.yellow }
+            ):wait()
+            pirates:say("For sure!"):wait()
+        end
+        if s == 2 then
+            pirates:say("No, we don't have them!"):wait()
+            pirates:say("And no, you don't know us!", { color = common.yellow }):wait()
+        end
+        if s == 3 then
+            pirates:say("Yes, we know it! You killed LeChuck"):wait()
+            pirates:say("You are a real hero", { color = common.yellow }):wait()
+            pirates:say("**Oh, Jesus!**"):wait()
+        end
+        if s == 4 then
+            userputon()
+            return
+        end
+    end
 end

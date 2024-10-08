@@ -1,5 +1,7 @@
 package pctk
 
+import "errors"
+
 // ObjectDeclare is a command that will declare a new object with the given properties.
 type ObjectDeclare struct {
 	Room   *Room
@@ -26,7 +28,7 @@ func (cmd ObjectCall) Execute(app *App, done *Promise) {
 		cmd.Args,
 	)
 	call = Recover(call, func(err error) Future {
-		if app.defaults == nil {
+		if !errors.Is(err, ErrScriptFunctionUnknown) || app.defaults == nil {
 			return AlreadyFailed(err)
 		}
 		return app.defaults.CallFunction(cmd.Function, cmd.Args)

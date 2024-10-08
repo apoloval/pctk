@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"errors"
 	"log"
 	"time"
 
@@ -123,12 +124,12 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 	if other != nil {
 		switch other := other.(type) {
 		case *Actor:
-			args = []ScriptEntityValue{ScriptEntityValue{
+			args = []ScriptEntityValue{{
 				Type:     ScriptEntityActor,
 				UserData: other,
 			}}
 		case *Object:
-			args = []ScriptEntityValue{ScriptEntityValue{
+			args = []ScriptEntityValue{{
 				Type:     ScriptEntityObject,
 				UserData: other,
 			}}
@@ -221,7 +222,7 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 		log.Fatalf("unknown room item type %T", item)
 	}
 	completed = RecoverWithValue(completed, func(err error) any {
-		if err != PromiseBroken {
+		if !errors.Is(err, PromiseBroken) {
 			log.Printf("Actor interaction failed: %v", err)
 		}
 		return nil
@@ -295,7 +296,7 @@ func (cmd ActorCall) Execute(app *App, done *Promise) {
 		cmd.Args,
 	)
 	call = Recover(call, func(err error) Future {
-		if app.defaults == nil {
+		if !errors.Is(err, ErrScriptFunctionUnknown) || app.defaults == nil {
 			return AlreadyFailed(err)
 		}
 		return app.defaults.CallFunction(cmd.Function, cmd.Args)

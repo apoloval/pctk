@@ -42,7 +42,8 @@ func (l *LuaInterpreter) CallFunction(
 	l.RawGet(-2)
 	if !l.IsFunction(-1) {
 		l.Pop(3)
-		return fmt.Errorf("function '%s' not found in call receiver '%s'", method, recv)
+		return fmt.Errorf("function '%s' not found in call receiver '%s': %w",
+			method, recv, ErrScriptFunctionUnknown)
 	}
 
 	for _, arg := range args {
@@ -63,7 +64,8 @@ func (l *LuaInterpreter) CallMethod(
 	l.Field(-1, recv.String())
 	if l.IsNil(-1) {
 		l.Pop(2)
-		return fmt.Errorf("call receiver '%s' not found during method '%s' call", recv, method)
+		return fmt.Errorf("call receiver '%s' not found during method '%s' call: %w",
+			recv, method, ErrScriptFunctionUnknown)
 	}
 
 	l.PushString(method)
@@ -354,12 +356,12 @@ func (l *LuaInterpreter) DeclareColorType() {
 // DeclareControlFunctions declares the control functions in the Lua interpreter.
 func (l *LuaInterpreter) DeclareControlFunctions(app *App) {
 	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(EnableControlPanel{Enable: true})
+		app.RunCommand(ControlPanelChangeMode{Mode: ControlPaneNormal})
 		return 0
 	})
 	l.SetGlobal("userputon")
 	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(EnableControlPanel{Enable: false})
+		app.RunCommand(ControlPanelChangeMode{Mode: ControlPaneDisabled})
 		return 0
 	})
 	l.SetGlobal("userputoff")
@@ -974,6 +976,56 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),
 		})
 		return 0
+	})
+}
+
+// DeclareSentenceChoiceType declares the type of a SentenceChoice in the Lua interpreter.
+func (l *LuaInterpreter) DeclareSentenceChoiceType(app *App) {
+	if l.DeclareEntityType(ScriptEntitySentenceChoice) {
+		return
+	}
+	l.DeclareEntityConstructor(
+		ScriptEntitySentenceChoice,
+		"sentencechoice",
+		func(l *LuaInterpreter) int {
+			ret, err := app.RunCommand(SentenceChoiceInit()).Wait()
+			if err != nil {
+				lua.Errorf(l.State, "error initializing sentence choice: %s", err.Error())
+			}
+			choice := ret.(*ControlSentenceChoice)
+			l.PushEntity(ScriptEntitySentenceChoice, choice)
+			return 1
+		},
+	)
+	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "add", func(l *LuaInterpreter) int {
+		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
+		sentence := lua.CheckString(l.State, 2)
+		_, err := app.RunCommand(SentenceChoiceAdd(choice, sentence)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error adding sentence to choice: %s", err.Error())
+		}
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "wait", func(l *LuaInterpreter) int {
+		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
+		ret, err := app.RunCommand(SentenceChoiceWait(choice, false)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
+		}
+		sentence := ret.(IndexedSentence)
+		l.PushInteger(sentence.Index + 1)
+		l.PushString(sentence.Sentence)
+		return 2
+	})
+	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "waitsay", func(l *LuaInterpreter) int {
+		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
+		ret, err := app.RunCommand(SentenceChoiceWait(choice, true)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
+		}
+		sentence := ret.(IndexedSentence)
+		l.PushInteger(sentence.Index + 1)
+		return 1
 	})
 }
 
