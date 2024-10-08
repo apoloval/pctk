@@ -12,6 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # from https://github.com/gen2brain/raylib-go/blob/master/.github/workflows/build.yml
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y \
+          libwayland-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libxi-dev
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
