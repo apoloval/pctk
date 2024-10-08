@@ -1,7 +1,6 @@
 package pctk_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/apoloval/pctk"
@@ -16,25 +15,25 @@ const (
 func TestNewWalkBox(t *testing.T) {
 	testCases := []struct {
 		name        string
-		vertices    [4]pctk.Positionf
+		vertices    [4]pctk.Position
 		shouldPanic bool
 		message     string
 	}{
 		{
 			name:        "Concave polygon should panic",
-			vertices:    [4]pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 4}},
+			vertices:    [4]pctk.Position{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 4}},
 			shouldPanic: true,
 			message:     "Expected panic because vertices form a concave polygon!",
 		},
 		{
 			name:        "Collinear vertices should panic",
-			vertices:    [4]pctk.Positionf{{X: 1, Y: 2}, {X: 2, Y: 4}, {X: 3, Y: 6}, {X: 4, Y: 8}},
+			vertices:    [4]pctk.Position{{X: 1, Y: 2}, {X: 2, Y: 4}, {X: 3, Y: 6}, {X: 4, Y: 8}},
 			shouldPanic: true,
 			message:     "Expected panic because vertices are collinear!",
 		},
 		{
 			name:        "Should successfully create a valid WalkBox with a convex polygon",
-			vertices:    [4]pctk.Positionf{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
+			vertices:    [4]pctk.Position{{X: 0, Y: 0}, {X: 4, Y: 0}, {X: 4, Y: 4}, {X: 0, Y: 4}},
 			shouldPanic: false,
 			message:     "Expected create a valid WalkBox, vertices form a convex polygon!",
 		},
@@ -92,50 +91,40 @@ func TestFindPath(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		from       pctk.Positionf
-		to         pctk.Positionf
-		expectedTo pctk.Positionf
-		assertFunc func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Positionf)
+		from       pctk.Position
+		to         pctk.Position
+		expectedTo pctk.Position
+		assertFunc func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Position)
 	}{
 		{
 			name:       "Should return a valid path when 'from' and 'to' are inside walk boxes",
-			from:       pctk.Positionf{X: 0.5, Y: 0.5}, // inside box0
-			to:         pctk.Positionf{X: 1.5, Y: 2.5}, // inside box7
-			expectedTo: pctk.Positionf{X: 1.5, Y: 2.5}, // expected return to
-			assertFunc: func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Positionf) {
+			from:       pctk.Position{X: 0, Y: 0}, // inside box0
+			to:         pctk.Position{X: 1, Y: 2}, // inside box7
+			expectedTo: pctk.Position{X: 1, Y: 2}, // expected return to
+			assertFunc: func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Position) {
 				assert.True(t, path[len(path)-1].Position.Equals(expectedTo))
 			},
 		},
 		{
 			name:       "Should return the closest point when 'to' is outside the closest walk box",
-			from:       pctk.Positionf{X: 0.5, Y: 0.5}, // inside box0
-			to:         pctk.Positionf{X: 3.5, Y: 1.5}, // outside all boxes, close to box5
-			expectedTo: pctk.Positionf{X: 3, Y: 1.5},   // expected to return the closest point inside box5
-			assertFunc: func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Positionf) {
-				assert.True(t, path[len(path)-1].Position.Equals(expectedTo))
-			},
-		},
-		{
-			name:       "Should return the closest point avoiding zigzags",
-			from:       pctk.Positionf{X: 0.5, Y: 3.4}, // inside box6
-			to:         pctk.Positionf{X: 3.5, Y: 1.5}, // outside all boxes, close to box5
-			expectedTo: pctk.Positionf{X: 3, Y: 1.5},   // expected to return the closest point inside box5
-			assertFunc: func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Positionf) {
-				assert.True(t, path[0].Position.Equals(pctk.Positionf{X: 1, Y: 3.4}), fmt.Sprintf("should be the closest point but was %v", path[0].Position))
+			from:       pctk.Position{X: 0, Y: 0}, // inside box0
+			to:         pctk.Position{X: 3, Y: 1}, // outside all boxes, close to box5
+			expectedTo: pctk.Position{X: 3, Y: 1}, // expected to return the closest point inside box5
+			assertFunc: func(t *testing.T, path []*pctk.WayPoint, expectedTo pctk.Position) {
 				assert.True(t, path[len(path)-1].Position.Equals(expectedTo))
 			},
 		},
 	}
 
-	box0 := pctk.NewWalkBox("walkbox0", [4]pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}}, DefaultScale)
-	box1 := pctk.NewWalkBox("walkbox1", [4]pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}}, DefaultScale)
-	box2 := pctk.NewWalkBox("walkbox2", [4]pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}}, DefaultScale)
-	box3 := pctk.NewWalkBox("walkbox3", [4]pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}}, DefaultScale)
-	box4 := pctk.NewWalkBox("walkbox4", [4]pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}}, DefaultScale)
-	box5 := pctk.NewWalkBox("walkbox5", [4]pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}}, DefaultScale)
-	box6 := pctk.NewWalkBox("walkbox6", [4]pctk.Positionf{{1, 4}, {0, 4}, {0, 3}, {1, 3}}, DefaultScale) // starts in top right vertex on purpose
-	box7 := pctk.NewWalkBox("walkbox7", [4]pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}}, DefaultScale)
-	box8 := pctk.NewWalkBox("walkbox8", [4]pctk.Positionf{{2, 3}, {3, 3}, {3, 4}, {2, 4}}, DefaultScale)
+	box0 := pctk.NewWalkBox("walkbox0", [4]pctk.Position{{0, 0}, {1, 0}, {1, 1}, {0, 1}}, DefaultScale)
+	box1 := pctk.NewWalkBox("walkbox1", [4]pctk.Position{{1, 0}, {2, 0}, {2, 1}, {1, 1}}, DefaultScale)
+	box2 := pctk.NewWalkBox("walkbox2", [4]pctk.Position{{2, 0}, {3, 0}, {3, 1}, {2, 1}}, DefaultScale)
+	box3 := pctk.NewWalkBox("walkbox3", [4]pctk.Position{{0, 1}, {1, 1}, {1, 2}, {0, 2}}, DefaultScale)
+	box4 := pctk.NewWalkBox("walkbox4", [4]pctk.Position{{1, 1}, {2, 1}, {2, 2}, {1, 2}}, DefaultScale)
+	box5 := pctk.NewWalkBox("walkbox5", [4]pctk.Position{{2, 1}, {3, 1}, {3, 2}, {2, 2}}, DefaultScale)
+	box6 := pctk.NewWalkBox("walkbox6", [4]pctk.Position{{1, 4}, {0, 4}, {0, 3}, {1, 3}}, DefaultScale) // starts in top right vertex on purpose
+	box7 := pctk.NewWalkBox("walkbox7", [4]pctk.Position{{1, 2}, {2, 2}, {2, 5}, {1, 5}}, DefaultScale)
+	box8 := pctk.NewWalkBox("walkbox8", [4]pctk.Position{{2, 3}, {3, 3}, {3, 4}, {2, 4}}, DefaultScale)
 
 	walkBoxMatrix := pctk.NewWalkBoxMatrix([]*pctk.WalkBox{box0, box1, box2, box3, box4, box5, box6, box7, box8})
 

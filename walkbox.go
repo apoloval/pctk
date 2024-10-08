@@ -19,10 +19,14 @@ type WalkBox struct {
 // It ensures the polygon formed by the vertices is convex. If not, it will cause a panic.
 // Why convex? Because you can draw a straight line/path between any two vertices inside the polygon
 // without needing to implement complex pathfinding algorithms.
-func NewWalkBox(id string, vertices [4]Positionf, scale float32) *WalkBox {
+func NewWalkBox(id string, vertices [4]Position, scale float32) *WalkBox {
+	var verticesf [4]Positionf
+	for i, v := range vertices {
+		verticesf[i] = v.ToPosf()
+	}
 	w := &WalkBox{
 		walkBoxID: id,
-		vertices:  vertices,
+		vertices:  verticesf,
 		enabled:   true,
 		scale:     scale,
 	}
@@ -225,29 +229,31 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 // WayPoint represents a point and its associated WalkBox.
 type WayPoint struct {
 	Walkbox  *WalkBox
-	Position Positionf
+	Position Position
 }
 
 // FindPath calculates and returns a path as a sequence of waypoints from the
 // starting point 'from' to the destination 'to' within the walk box matrix.
 // The path is returned as a slice of waypoints.
-func (wm *WalkBoxMatrix) FindPath(from, to Positionf) []*WayPoint {
+func (wm *WalkBoxMatrix) FindPath(from, to Position) []*WayPoint {
 	var path []*WayPoint
-	current, _ := wm.walkBoxAt(from)
-	target, _ := wm.walkBoxAt(to)
+	fromf := from.ToPosf()
+	tof := to.ToPosf()
+	current, _ := wm.walkBoxAt(fromf)
+	target, _ := wm.walkBoxAt(tof)
 
 	for current != target {
 		next := wm.nextWalkBox(current, target)
 		if next == InvalidWalkBox {
 			break
 		}
-		nextPosition := wm.closestPositionToWalkBox(from, next)
-		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition})
+		nextPosition := wm.closestPositionToWalkBox(fromf, next)
+		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition.ToPos()})
 		current = next
-		from = nextPosition
+		fromf = nextPosition
 	}
 
-	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, to)})
+	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, tof).ToPos()})
 	return path
 }
 

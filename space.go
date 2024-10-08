@@ -98,6 +98,11 @@ func (p Position) DirectionTo(other Position) Direction {
 	}
 }
 
+// Equals returns true if both Position instances have the same X and Y coordinates.
+func (p Position) Equals(p1 Position) bool {
+	return p.X == p1.X && p.Y == p1.Y
+}
+
 func (p Position) toRaylib() rl.Vector2 {
 	return rl.NewVector2(float32(p.X), float32(p.Y))
 }
