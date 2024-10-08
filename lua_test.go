@@ -160,6 +160,7 @@ func TestDeclareRoomType(t *testing.T) {
 	l := NewLuaInterpreter()
 	lua.BaseOpen(l.State)
 
+	// TODO: Fix the deadlock running app.init() --> rl.InitWindow(...)
 	app := New(NewResourceBundle())
 	l.DeclareRoomType(app, nil)
 
