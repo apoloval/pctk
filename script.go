@@ -69,6 +69,9 @@ const (
 
 	// ScriptEntityState is the type of an ObjectState entity.
 	ScriptEntityState ScriptEntityType = "state"
+
+	// ScriptEntityWalkBox is the type of a Walkbox entity.
+	ScriptEntityWalkBox ScriptEntityType = "walkbox"
 )
 
 // RegistryName returns the name of the entity type in the Lua registry.
