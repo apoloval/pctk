@@ -252,3 +252,22 @@ func TestDeclareObjectType(t *testing.T) {
 	`)
 	assert.Error(t, err)
 }
+
+func TestDeclareWalkBoxType(t *testing.T) {
+	l := NewLuaInterpreter()
+	lua.BaseOpen(l.State)
+
+	l.DeclareWalkBoxType()
+
+	assert.NoError(t, lua.DoString(l.State, `
+		wb = walkbox {
+			vertices = { 
+				pos { x=0, y=0 }, 
+				pos { x=0, y=10 }, 
+				pos { x=10, y=10 }, 
+				pos { x=10, y=0 },
+			},
+			scale = 1.0,
+		}
+	`))
+}

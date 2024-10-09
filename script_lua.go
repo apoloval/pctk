@@ -26,6 +26,7 @@ func (s *Script) luaInit(app *App) {
 		s.lua.DeclareSentenceChoiceType(app)
 		s.lua.DeclareSizeType()
 		s.lua.DeclareSoundType(app)
+		s.lua.DeclareWalkBoxType()
 
 		s.lua.DeclareExportFunction(func(exp ScriptNamedEntityValue) {
 			s.exports = append(s.exports, exp)

@@ -12,6 +12,44 @@ pirates = actor {
 export {
     melee = room {
         background = ref("resources:backgrounds/Melee"),
+        walkboxes = {
+            box1 = walkbox {
+                vertices = {
+                    pos {x=80, y=110}, 
+                    pos {x=270, y=110}, 
+                    pos {x=175, y=100}, 
+                    pos {x=145, y=100},
+                }, 
+                scale = 0.95,
+            },
+	        box2 = walkbox {
+                vertices = { 
+                    pos {x=145, y=100}, 
+                    pos {x=175, y=100}, 
+                    pos {x=175, y=90}, 
+                    pos {x=145, y=90}
+                }, 
+                scale = 0.8,
+            },
+	        box3 = walkbox {
+                vertices = { 
+                    pos {x=145, y=90}, 
+                    pos {x=175, y=90}, 
+                    pos {x=175, y=80}, 
+                    pos {x=145, y=80},
+                }, 
+                scale = 0.6,
+            },
+	        box4 = walkbox {
+                vertices = {
+                    pos {x=155, y=80}, 
+                    pos {x=165, y=80}, 
+                    pos {x=165, y=75}, 
+                    pos {x=155, y=75},
+                }, 
+                scale = 0.3,
+            },
+        },
         bucket = object {
             class = APPLICABLE,
             name = "bucket",
@@ -36,7 +74,7 @@ export {
 }
 
 function melee:enter()
-    local skipintro = false
+    local skipintro = true
 
     pirates:show {
         pos = pos {x=38, y=137},         

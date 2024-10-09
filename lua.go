@@ -949,6 +949,15 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 				switch key {
 				case "background":
 					room.Background = l.CheckEntity(-1, ScriptEntityRef).(ResourceRef)
+				case "walkboxes":
+					var walkboxes []*WalkBox
+					l.WithEachTableItem(-1, func(k string) {
+						wb := l.CheckEntity(-1, ScriptEntityWalkBox).(*WalkBox)
+						wb.walkBoxID = k
+						walkboxes = append(walkboxes, wb)
+					})
+					matrix := NewWalkBoxMatrix(walkboxes)
+					room.wbmatrix = matrix
 				default:
 					switch l.EntityTypeOf(-1) {
 					case ScriptEntityObject:
@@ -974,6 +983,14 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 				l.PushEntity(ScriptEntityObject, obj)
 				obj.CallRecv = l.RegisterCallReceiver(-1)
 				l.SetField(-2, k)
+			}
+
+			// Do the same for the walkboxes.
+			if room.wbmatrix != nil {
+				for _, wb := range room.wbmatrix.walkBoxes {
+					l.PushEntity(ScriptEntityWalkBox, wb)
+					l.SetField(-2, wb.walkBoxID)
+				}
 			}
 
 			// Declare the room as call receiver.
@@ -1106,6 +1123,33 @@ func (l *LuaInterpreter) DeclareUtilityFunctions(app *App) {
 	l.SetGlobal("sleep")
 }
 
+// DeclareWalkBoxType declares the type of a Walkbox in the Lua interpreter.
+func (l *LuaInterpreter) DeclareWalkBoxType() {
+	l.DeclarePositionType()
+	if l.DeclareEntityType(ScriptEntityWalkBox) {
+		return
+	}
+	l.DeclareEntityConstructor(ScriptEntityWalkBox, "walkbox", func(l *LuaInterpreter) int {
+		var vertices [4]Position
+		scale := 1.0
+		l.WithField(1, "vertices", func() {
+			l.WithEachArrayItem(-1, func(idx int) {
+				if idx > 4 {
+					lua.ArgumentError(l.State, 1, "walkbox must have 4 vertices")
+				}
+				vertices[idx-1] = l.CheckEntity(-1, ScriptEntityPos).(Position)
+			})
+		})
+		l.WithOptionalField(1, "scale", func() {
+			scale = lua.CheckNumber(l.State, -1)
+		})
+
+		walkbox := NewWalkBox("", vertices, float32(scale))
+		l.PushEntity(ScriptEntityWalkBox, walkbox)
+		return 1
+	})
+}
+
 // EntityTypeOf returns the entity type of the entity at the given index.
 func (l *LuaInterpreter) EntityTypeOf(index int) ScriptEntityType {
 	index = l.AbsIndex(index)
@@ -1183,6 +1227,17 @@ func (l *LuaInterpreter) WithOptionalField(index int, name string, f func()) boo
 	f()
 	l.Pop(1)
 	return true
+}
+
+// WithEachArrayItem calls the function f for each item in the array at index.
+func (l *LuaInterpreter) WithEachArrayItem(index int, f func(idx int)) {
+	index = l.AbsIndex(index)
+	l.PushNil()
+	for l.Next(index) {
+		idx := lua.CheckInteger(l.State, -2)
+		f(idx)
+		l.Pop(1)
+	}
 }
 
 // WithEachTableItem calls the function f for each item in the table at index.
