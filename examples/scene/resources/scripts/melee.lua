@@ -137,6 +137,7 @@ function melee:enter()
     guybrush:select()
     CONTROL:paneon()
     CONTROL:cursoron()
+    self:camfollow(guybrush)
 end
 
 function melee.bucket:lookat()

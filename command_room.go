@@ -21,3 +21,18 @@ type RoomShow struct {
 func (cmd RoomShow) Execute(app *App, done *Promise) {
 	done.Bind(app.StartRoom(cmd.Room))
 }
+
+// RoomCameraTo is a command that will move the camera to the given position.
+func RoomCameraTo(room *Room, pos int) CommandFunc {
+	return func(a *App) (any, error) {
+		room.CameraMoveTo(pos)
+		return nil, nil
+	}
+}
+
+func RoomCameraFollowActor(room *Room, actor *Actor) CommandFunc {
+	return func(a *App) (any, error) {
+		room.CameraFollowActor(actor)
+		return nil, nil
+	}
+}

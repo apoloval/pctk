@@ -162,11 +162,15 @@ func (a *Actor) ItemUsePosition() (Position, Direction) {
 }
 
 func (a *Actor) costumePos() Position {
-	return a.pos.ToPos().Sub(NewPos(a.Size.W/2, a.Size.H-a.Elev))
+	pos := a.pos.ToPos().Sub(NewPos((a.Size.W / 2), a.Size.H-a.Elev))
+	if a.Room != nil {
+		pos.X -= a.Room.campos
+	}
+	return pos
 }
 
 func (a *Actor) dialogPos() Position {
-	return a.pos.ToPos().Above(a.Size.H + 40)
+	return a.costumePos().Above(a.Size.H)
 }
 
 // Action is an action that an actor is performing.
