@@ -72,7 +72,8 @@ func (l *LuaInterpreter) CallMethod(
 	l.RawGet(-2)
 	if !l.IsFunction(-1) {
 		l.Pop(3)
-		return fmt.Errorf("method '%s' not found in call receiver '%s'", method, recv)
+		return fmt.Errorf("method '%s' not found in call receiver '%s': %w",
+			method, recv, ErrScriptFunctionUnknown)
 	}
 	l.PushValue(-2) // Push the call receiver as first argument
 	for _, arg := range args {

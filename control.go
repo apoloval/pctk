@@ -376,6 +376,11 @@ func (c *ControlSentenceChoice) Draw(mouse Position) {
 		if rect.Contains(mouse) {
 			color = Yellow
 		}
+
+		// Hack: remove EOL characters from the sentence so programmers must include line breaks
+		// manually.
+		sentence = strings.ReplaceAll(sentence, "\n", " ")
+
 		DrawDefaultText(sentence, rect.Pos, AlignLeft, color)
 	}
 }
