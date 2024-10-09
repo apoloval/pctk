@@ -15,6 +15,7 @@ type Room struct {
 	callrecv   ScriptCallReceiver // The call receiver for the room
 	objects    []*Object          // The objects declared in the room
 	script     *Script            // The script where this room is defined. Used to call the room functions.
+	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
 
 // NewRoom creates a new room with the given background image.
@@ -31,6 +32,11 @@ func NewRoom(bg *Image) *Room {
 func (r *Room) DeclareObject(obj *Object) {
 	obj.Room = r
 	r.objects = append(r.objects, obj)
+}
+
+// DeclareWalkBoxMatrix declares walk box matrix for the room.
+func (r *Room) DeclareWalkBoxMatrix(walkboxes []*WalkBox) {
+	r.wbmatrix = NewWalkBoxMatrix(walkboxes)
 }
 
 // Draw renders the room in the viewport.

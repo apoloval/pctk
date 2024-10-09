@@ -1,29 +1,55 @@
 package pctk
 
-import "log"
+import (
+	"log"
+	"math"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 // Walkbox refers to a convex polygonal area that defines the walkable space for actors.
 type WalkBox struct {
 	walkBoxID string
 	enabled   bool
-	vertices  [4]*Positionf
+	vertices  [4]Positionf
+	scale     float32
 }
 
 // NewWalkBox creates a new WalkBox with the given ID and vertices.
 // It ensures the polygon formed by the vertices is convex. If not, it will cause a panic.
 // Why convex? Because you can draw a straight line/path between any two vertices inside the polygon
 // without needing to implement complex pathfinding algorithms.
-func NewWalkBox(id string, vertices [4]*Positionf) *WalkBox {
+func NewWalkBox(id string, vertices [4]Position, scale float32) *WalkBox {
+	var verticesf [4]Positionf
+	for i, v := range vertices {
+		verticesf[i] = v.ToPosf()
+	}
 	w := &WalkBox{
 		walkBoxID: id,
-		vertices:  vertices,
+		vertices:  verticesf,
 		enabled:   true,
+		scale:     scale,
 	}
 
 	if !w.isConvex() {
 		log.Panicf("walkbox must be a convex polygon: %v", vertices)
 	}
 	return w
+}
+
+// Scale returns the scale factor of the WalkBox for camera zoom effects.
+func (w *WalkBox) Scale() float32 {
+	return w.scale
+}
+
+// Draws the edges of the WalkBox.
+func (w *WalkBox) draw() {
+	numVertices := len(w.vertices)
+	for i := 0; i < numVertices; i++ {
+		p1 := w.vertices[i]
+		p2 := w.vertices[(i+1)%numVertices]
+		rl.DrawLineV(p1.toRaylib(), p2.toRaylib(), BrigthGreen)
+	}
 }
 
 // isConvex check if the current WalkBox is a convex poligon.
@@ -57,8 +83,8 @@ func (w *WalkBox) isConvex() bool {
 	return totalCrossProduct != 0
 }
 
-// ContainsPoint check if the provided position is in the boundaries defined by the WalkBox.
-func (w *WalkBox) ContainsPoint(p *Positionf) bool {
+// containsPoint check if the provided position is in the boundaries defined by the WalkBox.
+func (w *WalkBox) containsPoint(p Positionf) bool {
 	// Check if the position is one of the vertices
 	for _, vertex := range w.vertices {
 		if p.Equals(vertex) {
@@ -80,24 +106,42 @@ func (w *WalkBox) ContainsPoint(p *Positionf) bool {
 	return numberOfIntersections%2 == 1 // Odd count means inside
 }
 
-// IsAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
-func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
+// isAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
+func (w *WalkBox) isAdjacent(otherWalkBox *WalkBox) bool {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
-			if w.ContainsPoint(vertex) {
+			if w.containsPoint(vertex) {
 				return true
 			}
 		}
 
 		// two-way verification
 		for _, vertex := range w.vertices {
-			if otherWalkBox.ContainsPoint(vertex) {
+			if otherWalkBox.containsPoint(vertex) {
 				return true
 			}
 		}
 	}
-
 	return false
+}
+
+// distance calculates the shortest distance from the WalkBox to the given position.
+func (wb *WalkBox) distance(p Positionf) float32 {
+	numVertices := len(wb.vertices)
+
+	var minDistance float32 = math.MaxFloat32
+	for i := 0; i < numVertices; i++ {
+		p1 := wb.vertices[i]
+		p2 := wb.vertices[(i+1)%numVertices]
+		closestPoint := p.ClosestPointOnSegment(p1, p2)
+		currentDistance := p.Distance(closestPoint)
+
+		if currentDistance < minDistance {
+			minDistance = currentDistance
+		}
+	}
+
+	return minDistance
 }
 
 // WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
@@ -123,7 +167,14 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	return wm
 }
 
-// calculateItineraryMatrix computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
+// WalkBoxes draw walkable boxes of the WalkBoxMatrix.
+func (wm *WalkBoxMatrix) Draw() {
+	for _, wb := range wm.walkBoxes {
+		wb.draw()
+	}
+}
+
+// resetItinerary computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
 func (wm *WalkBoxMatrix) resetItinerary() {
 	numBoxes := len(wm.walkBoxes)
 	distanceMatrix := make([][]int, numBoxes)
@@ -140,7 +191,7 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 			if i == j {
 				distanceMatrix[i][j] = 0
 				itineraryMatrix[i][j] = i
-			} else if walkbox.IsAdjacent(otherWalkBox) {
+			} else if walkbox.isAdjacent(otherWalkBox) {
 				distanceMatrix[i][j] = 1
 				itineraryMatrix[i][j] = j
 			} else {
@@ -175,11 +226,35 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 	}
 }
 
-// FindPath calculates and returns a path as a sequence of positions from the
+// WayPoint represents a point and its associated WalkBox.
+type WayPoint struct {
+	Walkbox  *WalkBox
+	Position Position
+}
+
+// FindPath calculates and returns a path as a sequence of waypoints from the
 // starting point 'from' to the destination 'to' within the walk box matrix.
-// The path is returned as a slice of positions representing waypoints.
-func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*Positionf {
-	panic("Not implemented yet!")
+// The path is returned as a slice of waypoints.
+func (wm *WalkBoxMatrix) FindPath(from, to Position) []*WayPoint {
+	var path []*WayPoint
+	fromf := from.ToPosf()
+	tof := to.ToPosf()
+	current, _ := wm.walkBoxAt(fromf)
+	target, _ := wm.walkBoxAt(tof)
+
+	for current != target {
+		next := wm.nextWalkBox(current, target)
+		if next == InvalidWalkBox {
+			break
+		}
+		nextPosition := wm.closestPositionToWalkBox(fromf, next)
+		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition.ToPos()})
+		current = next
+		fromf = nextPosition
+	}
+
+	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, tof).ToPos()})
+	return path
 }
 
 // nextWalkBox returns the next walk box in the path from the source to the destination.
@@ -191,18 +266,55 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 }
 
 // walkBoxAt returns the walk box identifier at the given position or the closest one,
-// along with a boolean indicating inclusion.
-func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
-	panic("Not implemented yet!")
+// along with a boolean indicating inclusion. If the point is located between two or more
+// boxes, it returns the lowest walk box ID among them.
+func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
+	var minDistance float32 = math.MaxFloat32
+	id = InvalidWalkBox
+	for i, wb := range wm.walkBoxes {
+		if included = wb.containsPoint(p); included {
+			return i, included
+		}
+
+		current := wb.distance(p)
+		if current < minDistance {
+			id = i
+			minDistance = current
+		}
+	}
+
+	return id, false
 }
 
-// closestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
-// the origin.
-func (wm *WalkBoxMatrix) closestPositionToWalkBox(from, to int) *Positionf {
-	panic("Not implemented yet!")
+// closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
+func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p Positionf) Positionf {
+	wb := wm.walkBoxes[from]
+	if wb.containsPoint(p) {
+		return p
+	}
+
+	return wm.closestPositionToWalkBox(p, from) // looking for the closest edge point
 }
 
-// closestPositionOnWalkBox returns the closest point on the walk box at a given position.
-func (wm *WalkBoxMatrix) closestPositionOnWalkBox(p *Positionf) *Positionf {
-	panic("Not implemented yet!")
+// closestPositionToWalkBox returns the nearest point on the edge of the specified walkbox
+// from a given position p.
+func (wm *WalkBoxMatrix) closestPositionToWalkBox(p Positionf, to int) Positionf {
+	var minDistance float32 = math.MaxFloat32
+	var closestPoint Positionf
+	wb := wm.walkBoxes[to]
+	numVertices := len(wb.vertices)
+
+	for i := 0; i < numVertices; i++ {
+		p1 := wb.vertices[i]
+		p2 := wb.vertices[(i+1)%numVertices]
+		currentPoint := p.ClosestPointOnSegment(p1, p2)
+		currentDistance := p.Distance(currentPoint)
+
+		if currentDistance < minDistance {
+			minDistance = currentDistance
+			closestPoint = currentPoint
+		}
+	}
+
+	return closestPoint
 }
