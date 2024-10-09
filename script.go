@@ -1,12 +1,16 @@
 package pctk
 
 import (
+	"errors"
 	"io"
 	"log"
 	"sync"
 
 	"github.com/google/uuid"
 )
+
+// ErrEntityNotFound is the error returned when a function or method is unknown in a script.
+var ErrScriptFunctionUnknown = errors.New("script function unknown")
 
 // ScriptEntityType is the type of a user data entity in a script.
 type ScriptEntityType string
@@ -23,6 +27,9 @@ const (
 
 	// ScriptEntityColor is the type of a Color entity.
 	ScriptEntityColor ScriptEntityType = "color"
+
+	// ScriptEntityControl is the type of a Control entity.
+	ScriptEntityControl ScriptEntityType = "control"
 
 	// ScriptEntityDir is the type of a Direction entity.
 	ScriptEntityDir ScriptEntityType = "direction"
@@ -53,6 +60,9 @@ const (
 
 	// ScriptEntitySize is the type of a Size entity.
 	ScriptEntitySize ScriptEntityType = "size"
+
+	// ScriptEntitySentenceChoice is the type of a SentenceChoice entity.
+	ScriptEntitySentenceChoice ScriptEntityType = "choice"
 
 	// ScriptEntitySound is the type of a Sound entity.
 	ScriptEntitySound ScriptEntityType = "sound"
