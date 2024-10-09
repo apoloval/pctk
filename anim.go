@@ -49,6 +49,11 @@ func (a *Animation) Flip(flip bool) *Animation {
 //   - uint64: the delay.
 func (a *Animation) BinaryEncode(w io.Writer) (n int, err error) {
 	n, err = BinaryEncode(w, a.flip, uint32(len(a.frames)))
+
+	if err != nil {
+		return n, err
+	}
+
 	for _, frame := range a.frames {
 		nn, err := BinaryEncode(w, byte(frame.col), byte(frame.row), uint64(frame.delay))
 		n += nn

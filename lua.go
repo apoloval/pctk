@@ -193,7 +193,10 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 		var cmd ActorStand
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Direction = l.CheckEntity(2, ScriptEntityDir).(Direction)
-		app.RunCommand(cmd).Wait()
+		_, err := app.RunCommand(cmd).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error declaring lookdir actor method: %s", err.Error())
+		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "say", func(l *LuaInterpreter) int {
@@ -210,7 +213,10 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 	l.DeclareEntityMethod(ScriptEntityActor, "select", func(l *LuaInterpreter) int {
 		var cmd ActorSelectEgo
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
-		app.RunCommand(cmd).Wait()
+		_, err := app.RunCommand(cmd).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error declaring select actor method: %s", err.Error())
+		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "show", func(l *LuaInterpreter) int {
@@ -222,14 +228,20 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 		l.WithOptionalField(2, "lookat", func() {
 			cmd.LookAt = l.CheckEntity(-1, ScriptEntityDir).(Direction)
 		})
-		app.RunCommand(cmd).Wait()
+		_, err := app.RunCommand(cmd).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error declaring show actor method: %s", err.Error())
+		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "toinventory", func(l *LuaInterpreter) int {
 		var cmd ActorAddToInventory
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Object = l.CheckEntity(2, ScriptEntityObject).(*Object)
-		app.RunCommand(cmd).Wait()
+		_, err := app.RunCommand(cmd).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error declaring toinventory actor method: %s", err.Error())
+		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "walkto", func(l *LuaInterpreter) int {
@@ -631,7 +643,11 @@ func (l *LuaInterpreter) DeclareFutureType() {
 	}
 	l.DeclareEntityMethod(ScriptEntityFuture, "wait", func(l *LuaInterpreter) int {
 		f := l.CheckEntity(1, ScriptEntityFuture).(Future)
-		f.Wait()
+
+		_, err := f.Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error declaring wait: %s", err.Error())
+		}
 		return 0
 	})
 }
