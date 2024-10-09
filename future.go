@@ -20,6 +20,21 @@ type Future interface {
 	IsCompleted() bool
 }
 
+// AlreadySucceeded creates a future that is already succeeded.
+func AlreadySucceeded(v any) Future {
+	return alreadySucceeded{v}
+}
+
+type alreadySucceeded struct{ any }
+
+func (f alreadySucceeded) Wait() (any, error) {
+	return f.any, nil
+}
+
+func (f alreadySucceeded) IsCompleted() bool {
+	return true
+}
+
 // AlreadyFailed creates a future that is already failed.
 func AlreadyFailed(err error) Future {
 	return alreadyFailed{err}
@@ -56,6 +71,14 @@ func Continue(f Future, g func(any) Future) Future {
 	return prom
 }
 
+// FutureMap maps the value of a future to another value. If the future fails, the resulting future
+// will fail with the same error.
+func FutureMap(f Future, g func(any) any) Future {
+	return Continue(f, func(v any) Future {
+		return AlreadySucceeded(g(v))
+	})
+}
+
 // IgnoreError returns a future that will ignore the error of the given future f, replacing it with
 // val if fails.
 func IgnoreError(f Future, val any) Future {
@@ -84,19 +107,6 @@ func RecoverWithValue(f Future, g func(error) any) Future {
 		prom.CompleteWithValue(g(err))
 		return prom
 	})
-}
-
-// WaitAs waits for the future and returns the value as the given type.
-func WaitAs[T any](f Future) (val T, err error) {
-	var v any
-	if v, err = f.Wait(); err != nil {
-		return
-	}
-	var ok bool
-	if val, ok = v.(T); !ok {
-		err = fmt.Errorf("cannot convert %T to %T", v, val)
-	}
-	return
 }
 
 // Promise is an instant when some event will be produced.

@@ -52,8 +52,8 @@ function melee:enter()
     common.cricket:play()
     guybrush:walkto(pos {x=290, y=140}):wait()
     if not skipintro then
-        userputoff()
-        cursoroff()
+        CONTROL:paneoff()
+        CONTROL:cursoroff()
 
         guybrush:say("Hello, I'm Guybrush Threepwood,\nmighty pirate!"):wait()
         pirates:say("**Oh no! This guy again!**")
@@ -88,8 +88,8 @@ function melee:enter()
     end
 
     guybrush:select()
-    userputon()
-    cursoron()
+    CONTROL:paneon()
+    CONTROL:cursoron()
 end
 
 function melee.bucket:lookat()
@@ -109,17 +109,17 @@ function melee.bucket:give(to)
 end
 
 function melee.bucket:pickup()
-    cursoroff()
+    CONTROL:cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but..."):wait()
     guybrush:toinventory(self)
-    cursoron()
+    CONTROL:cursoron()
 end
 
 function melee.bucket:use(on)
-    if on == melee.objects.clock then
+    if on == melee.clock then
         guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
     elseif on == pirates then
-        melee.objects.bucket:give(pirates)
+        melee.bucket:give(pirates)
     else
         DEFAULT.use(self, on)
     end
@@ -143,5 +143,33 @@ function pirates:lookat()
 end
 
 function pirates:talkto()
-    guybrush:say("Now they are busy.\nI will not disturb them.")
+    while true do
+        local choice = CONTROL:sentencechoice()
+        choice:add("Hello, guys! Are you really sure you don't have the keys?")
+        choice:add("I'm sure you have them! I know you!")
+        choice:add("I'm Guybrush Threepwood, mighty pirate!")
+        choice:add("I think I will go to the Scumm bar. See you!")
+        local s = choice:waitsay()
+        if s == 1 then
+            pirates:say("Yes, we are sure!"):wait()
+            pirates:say(
+                "If we had them, we would\nhave left this place long ago!",
+                { color = common.yellow }
+            ):wait()
+            pirates:say("For sure!"):wait()
+        end
+        if s == 2 then
+            pirates:say("No, we don't have them!"):wait()
+            pirates:say("And no, you don't know us!", { color = common.yellow }):wait()
+        end
+        if s == 3 then
+            pirates:say("Yes, we know it! You killed LeChuck"):wait()
+            pirates:say("You are a real hero", { color = common.yellow }):wait()
+            pirates:say("**Oh, Jesus!**"):wait()
+        end
+        if s == 4 then
+            CONTROL:paneon()
+            return
+        end
+    end
 end

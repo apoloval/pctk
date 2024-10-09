@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"fmt"
+	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -97,6 +98,11 @@ func (p Position) DirectionTo(other Position) Direction {
 	}
 }
 
+// Equals returns true if both Position instances have the same X and Y coordinates.
+func (p Position) Equals(p1 Position) bool {
+	return p.X == p1.X && p.Y == p1.Y
+}
+
 func (p Position) toRaylib() rl.Vector2 {
 	return rl.NewVector2(float32(p.X), float32(p.Y))
 }
@@ -174,12 +180,12 @@ func (p Positionf) Move(to Positionf, speed Positionf) Positionf {
 }
 
 // CrossProduct calculates the 2D cross product (determinant) of vectors p->p1 and p1->p2 to determine their orientation.
-func (p *Positionf) CrossProduct(p1, p2 *Positionf) float32 {
+func (p Positionf) CrossProduct(p1, p2 Positionf) float32 {
 	return (p1.X-p.X)*(p2.Y-p1.Y) - (p1.Y-p.Y)*(p2.X-p1.X)
 }
 
 // IsIntersecting checks if a horizontal ray from point p intersects the line segment p1->p2 (Ray-Casting method).
-func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
+func (p Positionf) IsIntersecting(p1, p2 Positionf) bool {
 	if (p1.Y > p.Y) != (p2.Y > p.Y) {
 		return p.X < (p2.X-p1.X)*(p.Y-p1.Y)/(p2.Y-p1.Y)+p1.X
 	}
@@ -187,9 +193,47 @@ func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
 	return false
 }
 
+// Distance calculates the Euclidean distance between two points.
+func (p Positionf) Distance(p1 Positionf) float32 {
+	dx := p.X - p1.X
+	dy := p.Y - p1.Y
+	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
+}
+
+// ClosestPointOnSegment returns the closest point on the segment defined by p1 and p2 to the point p.
+func (p Positionf) ClosestPointOnSegment(p1, p2 Positionf) Positionf {
+	if p1.Equals(p2) {
+		return p1
+	}
+
+	px := p.X - p1.X
+	py := p.Y - p1.Y
+
+	vx := p2.X - p1.X
+	vy := p2.Y - p1.Y
+
+	lengthSq := vx*vx + vy*vy // how long the segment is, squared.
+
+	// calculate point's position on the segment.
+	// If t is less than 0, it’s closer to the start of the segment.
+	// If it’s greater than 1, it’s closer to the end.
+	t := float32(math.Max(0, math.Min(1, float64((px*vx+py*vy)/lengthSq))))
+
+	// Find the closest point on the segment.
+	closestX := p1.X + t*vx
+	closestY := p1.Y + t*vy
+
+	return Positionf{closestX, closestY}
+}
+
 // Equals returns true if both Positionf instances have the same X and Y coordinates.
-func (p *Positionf) Equals(p1 *Positionf) bool {
+func (p Positionf) Equals(p1 Positionf) bool {
 	return p.X == p1.X && p.Y == p1.Y
+}
+
+// Converts a Positionf to a Raylib Vector2.
+func (p Positionf) toRaylib() rl.Vector2 {
+	return rl.NewVector2(p.X, p.Y)
 }
 
 // Size represents a 2D size.

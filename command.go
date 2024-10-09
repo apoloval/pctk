@@ -18,6 +18,14 @@ func (f CommandFunc) Execute(a *App, done *Promise) {
 	done.CompleteWith(v, err)
 }
 
+// CommandAsyncFunc is an async function that can be used as a command.
+type CommandAsyncFunc func(*App) Future
+
+// Execute implements the Command interface.
+func (f CommandAsyncFunc) Execute(a *App, done *Promise) {
+	done.Bind(f(a))
+}
+
 // CommandQueue is a queue of commands that will be executed by the application during the next
 // frame.
 type CommandQueue struct {

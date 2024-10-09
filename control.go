@@ -33,6 +33,11 @@ const (
 	VerbTurnOff Verb = "Turn off"
 )
 
+const (
+	// SentenceChoiceMagin is the margin of sentence choice in the control pane.
+	SentenceChoiceMagin = 2
+)
+
 // Action returns the action codename for the verb.
 func (v Verb) Action() string {
 	action := strings.ToLower(string(v))
@@ -320,18 +325,104 @@ func (c *ControlInventory) ObjectAt(app *App, pos Position) *Object {
 	return nil
 }
 
+// ControlPaneMode is the mode of the control pane.
+type ControlPaneMode int
+
+const (
+	ControlPaneDisabled ControlPaneMode = iota
+	ControlPaneNormal
+	ControlPaneDialog
+)
+
+// IndexedSentence is a sentence with an index. It is the result of a ControlSentenceChoice when
+// the player chooses a sentence.
+type IndexedSentence struct {
+	Index    int
+	Sentence string
+}
+
+// ControlSentenceChoice is a choice of sentences to show in the control pane.
+type ControlSentenceChoice struct {
+	Sentences []string
+	done      *Promise
+}
+
+func NewControlSentenceChoice() *ControlSentenceChoice {
+	return &ControlSentenceChoice{
+		done: NewPromise(),
+	}
+}
+
+// Abort the sentence choice.
+func (c *ControlSentenceChoice) Abort() {
+	c.done.Break()
+}
+
+// Add a new sentence to the choice.
+func (c *ControlSentenceChoice) Add(sentence string) {
+	c.Sentences = append(c.Sentences, sentence)
+}
+
+// Draw the sentence choice in the control pane.
+func (c *ControlSentenceChoice) Draw(mouse Position) {
+	for i, sentence := range c.Sentences {
+		rect := NewRect(
+			SentenceChoiceMagin,
+			ViewportHeight+SentenceChoiceMagin+FontDefaultSize*(i),
+			ScreenWidth-2*SentenceChoiceMagin,
+			FontDefaultSize,
+		)
+		color := Green
+		if rect.Contains(mouse) {
+			color = Yellow
+		}
+		DrawDefaultText(sentence, rect.Pos, AlignLeft, color)
+	}
+}
+
+// Done returns a future that will be completed when the player chooses a sentence.
+func (c *ControlSentenceChoice) Done() Future {
+	if c.done == nil {
+		c.done = new(Promise)
+	}
+	return c.done
+}
+
+// ProcessLeftClick processes a left click in the sentence choice. Returns true if the click has
+// selected a choice.
+func (c *ControlSentenceChoice) ProcessLeftClick(pos Position) bool {
+	for i, sent := range c.Sentences {
+		rect := NewRect(
+			SentenceChoiceMagin,
+			ViewportHeight+SentenceChoiceMagin+FontDefaultSize*(i),
+			ScreenWidth-2*SentenceChoiceMagin,
+			FontDefaultSize,
+		)
+		if rect.Contains(pos) {
+			c.done.CompleteWithValue(IndexedSentence{
+				Index:    i,
+				Sentence: sent,
+			})
+			return true
+		}
+	}
+	return false
+}
+
 // ControlPane is the screen control pane that shows the action, verbs and inventory.
 type ControlPane struct {
-	Enabled bool
+	Mode ControlPaneMode // Mode is the mode of the control pane (default, dialog...)
 
-	verbs  []VerbSlot
 	action ActionSentence
-	inv    ControlInventory
 	cursor *MouseCursor
+	choice *ControlSentenceChoice
+	inv    ControlInventory
+	verbs  []VerbSlot
 }
 
 // Init initializes the control pane.
 func (p *ControlPane) Init(cam *rl.Camera2D) {
+	p.Mode = ControlPaneDisabled
 	p.verbs = []VerbSlot{
 		{Verb: VerbOpen, Row: 0, Col: 0},
 		{Verb: VerbClose, Row: 1, Col: 0},
@@ -355,7 +446,10 @@ func (p *ControlPane) Init(cam *rl.Camera2D) {
 
 // Draw renders the control panel in the viewport.
 func (p *ControlPane) Draw(app *App) {
-	if p.Enabled {
+	switch p.Mode {
+	case ControlPaneDisabled:
+		return
+	case ControlPaneNormal:
 		for _, v := range p.verbs {
 			v.Draw(app, p.cursor)
 		}
@@ -363,7 +457,37 @@ func (p *ControlPane) Draw(app *App) {
 		p.action.Draw(app, hover)
 		p.inv.Draw(app, p.cursor)
 		p.cursor.Draw()
+	case ControlPaneDialog:
+		if p.choice != nil {
+			p.choice.Draw(p.cursor.Position())
+		}
+		p.cursor.Draw()
 	}
+}
+
+// Disable the control pane.
+func (p *ControlPane) Disable() {
+	if p.choice != nil {
+		p.choice.Abort()
+		p.choice = nil
+	}
+	p.Mode = ControlPaneDisabled
+}
+
+// Enable the control pane.
+func (p *ControlPane) Enable() {
+	if p.choice != nil {
+		p.choice.Abort()
+		p.choice = nil
+	}
+	p.Mode = ControlPaneNormal
+}
+
+// NewSentenceChoice creates a new sentence choice and sets the control pane to dialog mode.
+func (p *ControlPane) NewSentenceChoice() *ControlSentenceChoice {
+	p.Mode = ControlPaneDialog
+	p.choice = NewControlSentenceChoice()
+	return p.choice
 }
 
 func (p *ControlPane) hover(app *App, pos Position) RoomItem {
@@ -384,21 +508,33 @@ func (p *ControlPane) processControlInputs(app *App) {
 	}
 	pos := p.cursor.Position()
 	hover := p.hover(app, pos)
-	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-		if ViewportRect.Contains(pos) {
-			p.action.ProcessLeftClick(app, pos, hover)
+	switch p.Mode {
+	case ControlPaneNormal:
+		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+			if ViewportRect.Contains(pos) {
+				p.action.ProcessLeftClick(app, pos, hover)
+			}
+			if ControlPaneRect.Contains(pos) {
+				p.normalProcessLeftClick(app, pos)
+			}
+		} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+			if ViewportRect.Contains(pos) {
+				p.action.ProcessRightClick(app, pos, hover)
+			}
 		}
-		if ControlPaneRect.Contains(pos) {
-			p.processLeftClick(app, pos)
+	case ControlPaneDialog:
+		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+			if p.choice.ProcessLeftClick(pos) {
+				p.Mode = ControlPaneDisabled
+				p.choice = nil
+			}
 		}
-	} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
-		if ViewportRect.Contains(pos) {
-			p.action.ProcessRightClick(app, pos, hover)
-		}
+	} else if app.debugMode && rl.IsKeyPressed(rl.KeyD) {
+		app.debugEnabled = !app.debugEnabled
 	}
 }
 
-func (p *ControlPane) processLeftClick(app *App, click Position) {
+func (p *ControlPane) normalProcessLeftClick(app *App, click Position) {
 	for _, v := range p.verbs {
 		if v.Rect().Contains(click) {
 			p.action.Reset(v.Verb)

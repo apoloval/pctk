@@ -13,6 +13,13 @@ func WithScreenZoom(zoom int32) AppOption {
 	return func(a *App) { a.screenZoom = zoom }
 }
 
+// WithDebugMode allows you to enable the debug mode.
+func WithDebugMode() AppOption {
+	return func(a *App) {
+		a.debugMode = true
+	}
+}
+
 var defaultAppOptions = []AppOption{
 	WithScreenCaption("Point&Click Toolkit"),
 	WithScreenZoom(4),

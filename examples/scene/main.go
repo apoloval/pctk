@@ -7,7 +7,7 @@ import (
 func main() {
 	loader := pctk.NewResourceFileLoader("./")
 
-	app := pctk.New(loader, pctk.WithScreenZoom(4))
+	app := pctk.New(loader, pctk.WithScreenZoom(4), pctk.WithDebugMode())
 	app.RunCommand(pctk.ScriptRun{ScriptRef: pctk.NewResourceRef("resources", "scripts/boot")})
 	app.Run()
 }
