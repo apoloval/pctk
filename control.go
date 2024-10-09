@@ -353,6 +353,11 @@ func NewControlSentenceChoice() *ControlSentenceChoice {
 	}
 }
 
+// Abort the sentence choice.
+func (c *ControlSentenceChoice) Abort() {
+	c.done.Break()
+}
+
 // Add a new sentence to the choice.
 func (c *ControlSentenceChoice) Add(sentence string) {
 	c.Sentences = append(c.Sentences, sentence)
@@ -458,6 +463,24 @@ func (p *ControlPane) Draw(app *App) {
 		}
 		p.cursor.Draw()
 	}
+}
+
+// Disable the control pane.
+func (p *ControlPane) Disable() {
+	if p.choice != nil {
+		p.choice.Abort()
+		p.choice = nil
+	}
+	p.Mode = ControlPaneDisabled
+}
+
+// Enable the control pane.
+func (p *ControlPane) Enable() {
+	if p.choice != nil {
+		p.choice.Abort()
+		p.choice = nil
+	}
+	p.Mode = ControlPaneNormal
 }
 
 // NewSentenceChoice creates a new sentence choice and sets the control pane to dialog mode.

@@ -28,6 +28,9 @@ const (
 	// ScriptEntityColor is the type of a Color entity.
 	ScriptEntityColor ScriptEntityType = "color"
 
+	// ScriptEntityControl is the type of a Control entity.
+	ScriptEntityControl ScriptEntityType = "control"
+
 	// ScriptEntityDir is the type of a Direction entity.
 	ScriptEntityDir ScriptEntityType = "direction"
 

@@ -2,24 +2,36 @@ package pctk
 
 import "errors"
 
-// ControlPanelChangeMode is a command that will enable or disable the control panel.
-type ControlPanelChangeMode struct {
-	Mode ControlPaneMode
+// ControlPaneEnable is a command that will enable the control panel.
+func ControlPaneEnable() CommandFunc {
+	return func(a *App) (any, error) {
+		a.control.Enable()
+		return nil, nil
+	}
 }
 
-func (cmd ControlPanelChangeMode) Execute(app *App, done *Promise) {
-	app.control.Mode = cmd.Mode
-	done.Complete()
+// ControlPaneDisable is a command that will disable the control panel.
+func ControlPaneDisable() CommandFunc {
+	return func(a *App) (any, error) {
+		a.control.Disable()
+		return nil, nil
+	}
 }
 
-// EnableMouseCursor is a command that will enable or disable the mouse control.
-type EnableMouseCursor struct {
-	Enable bool
+// MouseCursorOn is a command that will enable the mouse cursor.
+func MouseCursorOn() CommandFunc {
+	return func(a *App) (any, error) {
+		a.control.cursor.Enabled = true
+		return nil, nil
+	}
 }
 
-func (cmd EnableMouseCursor) Execute(app *App, done *Promise) {
-	app.control.cursor.Enabled = cmd.Enable
-	done.Complete()
+// MouseCursorOff is a command that will disable the mouse cursor.
+func MouseCursorOff() CommandFunc {
+	return func(a *App) (any, error) {
+		a.control.cursor.Enabled = false
+		return nil, nil
+	}
 }
 
 // SentenceChoiceInit is a command that will initialize a new sentence choice dialog.

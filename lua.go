@@ -353,34 +353,50 @@ func (l *LuaInterpreter) DeclareColorType() {
 	})
 }
 
-// DeclareControlFunctions declares the control functions in the Lua interpreter.
-func (l *LuaInterpreter) DeclareControlFunctions(app *App) {
-	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(ControlPanelChangeMode{Mode: ControlPaneNormal})
+// DeclareControlType declares the type of a Control in the Lua interpreter.
+func (l *LuaInterpreter) DeclareControlType(app *App) {
+	if l.DeclareEntityType(ScriptEntityControl) {
+		return
+	}
+	l.DeclareEntityMethod(ScriptEntityControl, "cursoron", func(l *LuaInterpreter) int {
+		_, err := app.RunCommand(MouseCursorOn()).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error enabling cursor: %s", err.Error())
+		}
 		return 0
 	})
-	l.SetGlobal("userputon")
-	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(ControlPanelChangeMode{Mode: ControlPaneDisabled})
+	l.DeclareEntityMethod(ScriptEntityControl, "cursoroff", func(l *LuaInterpreter) int {
+		_, err := app.RunCommand(MouseCursorOff()).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error disabling cursor: %s", err.Error())
+		}
 		return 0
 	})
-	l.SetGlobal("userputoff")
-	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(EnableMouseCursor{Enable: true})
+	l.DeclareEntityMethod(ScriptEntityControl, "paneon", func(l *LuaInterpreter) int {
+		_, err := app.RunCommand(ControlPaneEnable()).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error enabling control panel: %s", err.Error())
+		}
 		return 0
 	})
-	l.SetGlobal("cursoron")
-	l.PushFunction(func(l *LuaInterpreter) int {
-		app.RunCommand(EnableMouseCursor{Enable: false})
+	l.DeclareEntityMethod(ScriptEntityControl, "paneoff", func(l *LuaInterpreter) int {
+		_, err := app.RunCommand(ControlPaneDisable()).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error disabling control panel: %s", err.Error())
+		}
 		return 0
 	})
-	l.SetGlobal("cursoroff")
-	l.PushFunction(func(l *LuaInterpreter) int {
-		millis := lua.CheckInteger(l.State, 1)
-		time.Sleep(time.Duration(millis) * time.Millisecond)
-		return 0
+	l.DeclareEntityMethod(ScriptEntityControl, "sentencechoice", func(l *LuaInterpreter) int {
+		val, err := app.RunCommand(SentenceChoiceInit()).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error initializing sentence choice: %s", err.Error())
+		}
+		choice := val.(*ControlSentenceChoice)
+		l.PushEntity(ScriptEntitySentenceChoice, choice)
+		return 1
 	})
-	l.SetGlobal("sleep")
+	l.PushEntity(ScriptEntityControl, struct{}{})
+	l.SetGlobal("CONTROL")
 }
 
 // DeclareDirectionType declares the type of a Direction in the Lua interpreter.
@@ -984,19 +1000,6 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType(app *App) {
 	if l.DeclareEntityType(ScriptEntitySentenceChoice) {
 		return
 	}
-	l.DeclareEntityConstructor(
-		ScriptEntitySentenceChoice,
-		"sentencechoice",
-		func(l *LuaInterpreter) int {
-			ret, err := app.RunCommand(SentenceChoiceInit()).Wait()
-			if err != nil {
-				lua.Errorf(l.State, "error initializing sentence choice: %s", err.Error())
-			}
-			choice := ret.(*ControlSentenceChoice)
-			l.PushEntity(ScriptEntitySentenceChoice, choice)
-			return 1
-		},
-	)
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "add", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
 		sentence := lua.CheckString(l.State, 2)
@@ -1091,6 +1094,16 @@ func (l *LuaInterpreter) DeclareSoundType(app *App) {
 		app.RunCommand(SoundStop{Sound: sound})
 		return 0
 	})
+}
+
+// DeclareUtilityFunctions declares the utility functions in the Lua interpreter.
+func (l *LuaInterpreter) DeclareUtilityFunctions(app *App) {
+	l.PushFunction(func(l *LuaInterpreter) int {
+		millis := lua.CheckInteger(l.State, 1)
+		time.Sleep(time.Duration(millis) * time.Millisecond)
+		return 0
+	})
+	l.SetGlobal("sleep")
 }
 
 // EntityTypeOf returns the entity type of the entity at the given index.

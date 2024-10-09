@@ -36,7 +36,7 @@ export {
 }
 
 function melee:enter()
-    local skipintro = true
+    local skipintro = false
 
     pirates:show {
         pos = pos {x=38, y=137},         
@@ -52,8 +52,8 @@ function melee:enter()
     common.cricket:play()
     guybrush:walkto(pos {x=290, y=140}):wait()
     if not skipintro then
-        userputoff()
-        cursoroff()
+        CONTROL:paneoff()
+        CONTROL:cursoroff()
 
         guybrush:say("Hello, I'm Guybrush Threepwood,\nmighty pirate!"):wait()
         pirates:say("**Oh no! This guy again!**")
@@ -88,8 +88,8 @@ function melee:enter()
     end
 
     guybrush:select()
-    userputon()
-    cursoron()
+    CONTROL:paneon()
+    CONTROL:cursoron()
 end
 
 function melee.bucket:lookat()
@@ -109,17 +109,17 @@ function melee.bucket:give(to)
 end
 
 function melee.bucket:pickup()
-    cursoroff()
+    CONTROL:cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but..."):wait()
     guybrush:toinventory(self)
-    cursoron()
+    CONTROL:cursoron()
 end
 
 function melee.bucket:use(on)
-    if on == melee.objects.clock then
+    if on == melee.clock then
         guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
     elseif on == pirates then
-        melee.objects.bucket:give(pirates)
+        melee.bucket:give(pirates)
     else
         DEFAULT.use(self, on)
     end
@@ -144,7 +144,7 @@ end
 
 function pirates:talkto()
     while true do
-        local choice = sentencechoice()
+        local choice = CONTROL:sentencechoice()
         choice:add("Hello, guys! Are you really sure you don't have the keys?")
         choice:add("I'm sure you have them! I know you!")
         choice:add("I'm Guybrush Threepwood, mighty pirate!")
@@ -168,7 +168,7 @@ function pirates:talkto()
             pirates:say("**Oh, Jesus!**"):wait()
         end
         if s == 4 then
-            userputon()
+            CONTROL:paneon()
             return
         end
     end
