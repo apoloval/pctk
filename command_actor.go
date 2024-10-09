@@ -3,7 +3,6 @@ package pctk
 import (
 	"errors"
 	"log"
-	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -234,14 +233,17 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 type ActorSpeak struct {
 	Actor *Actor
 	Text  string
-	Delay time.Duration
+	//Delay time.Duration
 	Color Color
 }
 
 func (cmd ActorSpeak) Execute(app *App, done *Promise) {
-	if cmd.Delay == 0 {
-		cmd.Delay = DefaultActorSpeakDelay
-	}
+	// TODO is not used, can we remove it?
+	/*
+		if cmd.Delay == 0 {
+			cmd.Delay = DefaultActorSpeakDelay
+		}
+	*/
 
 	if cmd.Color == rl.Blank {
 		cmd.Color = cmd.Actor.TalkColor

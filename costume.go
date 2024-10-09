@@ -53,6 +53,11 @@ func (c *Costume) WithAnimation(act CostumeAction, anim *Animation) *Costume {
 //   - the animation.
 func (c *Costume) BinaryEncode(w io.Writer) (n int, err error) {
 	n, err = BinaryEncode(w, c.sprites, uint32(len(c.anims)))
+
+	if err != nil {
+		return n, err
+	}
+
 	for act, anim := range c.anims {
 		nn, err := BinaryEncode(w, byte(act), anim)
 		n += nn

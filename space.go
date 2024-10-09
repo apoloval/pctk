@@ -258,10 +258,6 @@ func (s Size) FlipH() Size {
 	return Size{W: -s.W, H: s.H}
 }
 
-func (s Size) toRaylib() rl.Vector2 {
-	return rl.NewVector2(float32(s.W), float32(s.H))
-}
-
 // Rectangle represents a 2D rectangle.
 type Rectangle struct {
 	Pos  Position

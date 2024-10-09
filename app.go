@@ -17,7 +17,6 @@ type App struct {
 	actors   []*Actor
 	defaults *ObjectDefaults
 	dialogs  []Dialog
-	objects  []*Object
 	rooms    []*Room
 	room     *Room
 	scripts  map[ResourceRef]*Script
@@ -25,12 +24,9 @@ type App struct {
 	control  ControlPane
 	commands CommandQueue
 
-	cam         rl.Camera2D
-	cursorTx    rl.Texture2D
-	cursorColor Color
-	music       *Music
-	sound       *Sound
-	ego         *Actor
+	cam   rl.Camera2D
+	music *Music
+	ego   *Actor
 }
 
 // New creates a new pctk application.
