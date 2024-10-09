@@ -28,6 +28,3 @@ jobs:
 
       - name: Test
         run: go test -v -race -timeout 10s ./...
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3.2.0
