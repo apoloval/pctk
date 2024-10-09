@@ -192,7 +192,7 @@ end
 function pirates:talkto()
     while true do
         local choice = CONTROL:sentencechoice()
-        choice:add("Hello, guys! Are you really sure you don't have the keys?")
+        choice:add("Hello, guys! Are you really\nsure you don't have the keys?")
         choice:add("I'm sure you have them! I know you!")
         choice:add("I'm Guybrush Threepwood, mighty pirate!")
         choice:add("I think I will go to the Scumm bar. See you!")
@@ -200,7 +200,7 @@ function pirates:talkto()
         if s == 1 then
             pirates:say("Yes, we are sure!"):wait()
             pirates:say(
-                "If we had them, we would\nhave left this place long ago!",
+                "If we had them, we\nwould have left\nthis place long ago!",
                 { color = common.yellow }
             ):wait()
             pirates:say("For sure!"):wait()
