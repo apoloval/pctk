@@ -529,6 +529,8 @@ func (p *ControlPane) processControlInputs(app *App) {
 				p.choice = nil
 			}
 		}
+	} else if app.debugMode && rl.IsKeyPressed(rl.KeyD) {
+		app.debugEnabled = !app.debugEnabled
 	}
 }
 

@@ -11,6 +11,8 @@ type App struct {
 
 	screenCaption string
 	screenZoom    int32
+	debugMode     bool
+	debugEnabled  bool
 
 	actors   []*Actor
 	defaults *ObjectDefaults
