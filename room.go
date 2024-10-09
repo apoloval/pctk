@@ -40,7 +40,7 @@ func (r *Room) DeclareWalkBoxMatrix(walkboxes []*WalkBox) {
 }
 
 // Draw renders the room in the viewport.
-func (r *Room) Draw() {
+func (r *Room) Draw(debugEnabled bool) {
 	r.background.Draw(NewPos(0, 0), White)
 	items := make([]RoomItem, 0, len(r.actors)+len(r.objects))
 	for _, actor := range r.actors {
@@ -54,6 +54,10 @@ func (r *Room) Draw() {
 	})
 	for _, item := range items {
 		item.Draw()
+	}
+
+	if debugEnabled && r.wbmatrix != nil {
+		r.wbmatrix.Draw()
 	}
 }
 
@@ -166,6 +170,6 @@ func (a *App) StartRoom(room *Room) Future {
 
 func (a *App) drawSceneViewport() {
 	if a.room != nil {
-		a.room.Draw()
+		a.room.Draw(a.debugEnabled)
 	}
 }
