@@ -49,7 +49,11 @@ func (o *Object) Draw() {
 		return
 	}
 	if st := o.CurrentState(); st != nil && st.Anim != nil {
-		st.Anim.Draw(o.sprites, o.Pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H)))
+		pos := o.Pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H))
+		if o.Room != nil {
+			pos = pos.Sub(NewPos(o.Room.CameraPos(), 0))
+		}
+		st.Anim.Draw(o.sprites, pos)
 	}
 }
 

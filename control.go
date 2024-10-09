@@ -259,6 +259,7 @@ func (s *ActionSentence) interactWith(app *App, verb Verb, item, other RoomItem)
 }
 
 func (s *ActionSentence) walkToPos(app *App, click Position) {
+	click.X += app.room.CameraPos()
 	app.RunCommand(ActorWalkToPosition{
 		Actor:    app.ego,
 		Position: click,
