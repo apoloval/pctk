@@ -13,6 +13,15 @@ export {
     melee = room {
         background = ref("resources:backgrounds/Melee"),
         walkboxes = {
+            box0 = walkbox {
+                vertices = {
+                    pos {x=5, y=140}, 
+                    pos {x=320, y=140}, 
+                    pos {x=270, y=110}, 
+                    pos {x=80, y=110},
+                }, 
+                scale = 1,
+            },
             box1 = walkbox {
                 vertices = {
                     pos {x=80, y=110}, 
