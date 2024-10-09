@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # from https://github.com/gen2brain/raylib-go/blob/master/.github/workflows/build.yml
+      - name: Install package
+        run: |
+          sudo apt-get update -y; sudo apt-get -y install libxi-dev libxinerama-dev libxcursor-dev libxrandr-dev libgl1-mesa-dev libwayland-dev libxkbcommon-dev
+        if: runner.os == 'Linux'
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v -race -timeout 10s ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3.2.0
