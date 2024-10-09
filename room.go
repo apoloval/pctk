@@ -56,7 +56,7 @@ func (r *Room) Draw(debugMode bool) {
 		item.Draw()
 	}
 
-	if debugMode {
+	if debugMode && r.wbmatrix != nil {
 		r.wbmatrix.Draw()
 	}
 }
