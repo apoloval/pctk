@@ -170,6 +170,6 @@ func (a *App) StartRoom(room *Room) Future {
 
 func (a *App) drawSceneViewport() {
 	if a.room != nil {
-		a.room.Draw(a.debugMode)
+		a.room.Draw(a.debugEnabled)
 	}
 }
