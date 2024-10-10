@@ -192,22 +192,40 @@ func Standing(dir Direction) *Action {
 	}
 }
 
-// WalkingTo creates a new action that makes an actor walk to a given position.
-func WalkingTo(pos Position) *Action {
+// WalkingTo creates a new action that makes an actor walk through an array of waypoints.
+func WalkingTo(w []*WayPoint, debugEnabled bool) *Action {
 	return &Action{
 		prom: NewPromise(),
 		f: func(a *Actor, done *Promise) {
+			if debugEnabled {
+				end := w[len(w)-1].Position
+				alpha := uint8(255 - a.pos.Distance(end.ToPosf()))
+				for i := 0; i < len(w)-1; i++ {
+					p1 := w[i].Position
+					p2 := w[i+1].Position
+					rl.DrawLineEx(p1.toRaylib(), p2.toRaylib(), 2, rl.NewColor(255, 255, 0, alpha))
+				}
+			}
+
+			currentTarget := w[0].Position
+
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
 			}
 
-			if a.pos.ToPos() == pos {
-				done.Complete()
-				return
+			if a.pos.ToPos() == currentTarget {
+				w = w[1:]
+
+				if len(w) == 0 {
+					done.Complete()
+					return
+				}
+
+				currentTarget = w[0].Position
 			}
 
-			a.lookAt = a.pos.ToPos().DirectionTo(pos)
-			a.pos = a.pos.Move(pos.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
+			a.lookAt = a.pos.ToPos().DirectionTo(currentTarget)
+			a.pos = a.pos.Move(currentTarget.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
 		},
 	}
 }

@@ -48,7 +48,7 @@ func (w *WalkBox) draw() {
 	for i := 0; i < numVertices; i++ {
 		p1 := w.vertices[i]
 		p2 := w.vertices[(i+1)%numVertices]
-		rl.DrawLineV(p1.toRaylib(), p2.toRaylib(), BrigthGreen)
+		rl.DrawLineEx(p1.toRaylib(), p2.toRaylib(), 1.2, rl.NewColor(0x55, 0xFF, 0x55, 0x7D))
 	}
 }
 
@@ -242,6 +242,7 @@ func (wm *WalkBoxMatrix) FindPath(from, to Position) []*WayPoint {
 	current, _ := wm.walkBoxAt(fromf)
 	target, _ := wm.walkBoxAt(tof)
 
+	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: from})
 	for current != target {
 		next := wm.nextWalkBox(current, target)
 		if next == InvalidWalkBox {
@@ -262,7 +263,13 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 	if from < 0 || from >= len(wm.walkBoxes) || to < 0 || to >= len(wm.walkBoxes) {
 		return InvalidWalkBox
 	}
-	return wm.itineraryMatrix[from][to]
+
+	if wm.itineraryMatrix[from][to] == to {
+		return to
+	}
+
+	next := wm.itineraryMatrix[from][to]
+	return wm.nextWalkBox(from, next)
 }
 
 // walkBoxAt returns the walk box identifier at the given position or the closest one,
