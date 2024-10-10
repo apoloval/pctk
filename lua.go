@@ -72,7 +72,8 @@ func (l *LuaInterpreter) CallMethod(
 	l.RawGet(-2)
 	if !l.IsFunction(-1) {
 		l.Pop(3)
-		return fmt.Errorf("method '%s' not found in call receiver '%s'", method, recv)
+		return fmt.Errorf("method '%s' not found in call receiver '%s': %w",
+			method, recv, ErrScriptFunctionUnknown)
 	}
 	l.PushValue(-2) // Push the call receiver as first argument
 	for _, arg := range args {
@@ -1003,6 +1004,24 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
 		l.PushEntity(ScriptEntityRef, room.Background)
 		return 1
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "camfollow", func(l *LuaInterpreter) int {
+		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		actor := l.CheckEntity(2, ScriptEntityActor).(*Actor)
+		_, err := app.RunCommand(RoomCameraFollowActor(room, actor)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error making camera follow actor: %s", err.Error())
+		}
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "camto", func(l *LuaInterpreter) int {
+		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		pos := lua.CheckInteger(l.State, 2)
+		_, err := app.RunCommand(RoomCameraTo(room, pos)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error moving camera to position: %s", err.Error())
+		}
+		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "show", func(l *LuaInterpreter) int {
 		app.RunCommand(RoomShow{

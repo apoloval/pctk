@@ -259,6 +259,7 @@ func (s *ActionSentence) interactWith(app *App, verb Verb, item, other RoomItem)
 }
 
 func (s *ActionSentence) walkToPos(app *App, click Position) {
+	click.X += app.room.CameraPos()
 	app.RunCommand(ActorWalkToPosition{
 		Actor:    app.ego,
 		Position: click,
@@ -376,6 +377,11 @@ func (c *ControlSentenceChoice) Draw(mouse Position) {
 		if rect.Contains(mouse) {
 			color = Yellow
 		}
+
+		// Hack: remove EOL characters from the sentence so programmers must include line breaks
+		// manually.
+		sentence = strings.ReplaceAll(sentence, "\n", " ")
+
 		DrawDefaultText(sentence, rect.Pos, AlignLeft, color)
 	}
 }
@@ -456,12 +462,12 @@ func (p *ControlPane) Draw(app *App) {
 		hover := p.hover(app, p.cursor.Position())
 		p.action.Draw(app, hover)
 		p.inv.Draw(app, p.cursor)
-		p.cursor.Draw()
+		p.cursor.Draw(app.debugEnabled)
 	case ControlPaneDialog:
 		if p.choice != nil {
 			p.choice.Draw(p.cursor.Position())
 		}
-		p.cursor.Draw()
+		p.cursor.Draw(false)
 	}
 }
 

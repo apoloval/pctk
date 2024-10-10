@@ -2,9 +2,13 @@ package pctk
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"slices"
 )
+
+// RoomCameraSpeed is the speed at which the camera moves in the room.
+const RoomCameraSpeed = 2
 
 // Room represents a room in the game.
 type Room struct {
@@ -13,6 +17,9 @@ type Room struct {
 	actors     []*Actor           // The actors in the room
 	background *Image             // The background image of the room
 	callrecv   ScriptCallReceiver // The call receiver for the room
+	campos     int                // The camera position
+	camtarget  int                // The camera target position
+	camfollow  *Actor             // The actor to follow with the camera
 	objects    []*Object          // The objects declared in the room
 	script     *Script            // The script where this room is defined. Used to call the room functions.
 	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
@@ -28,6 +35,26 @@ func NewRoom(bg *Image) *Room {
 	}
 }
 
+// CameraFollowActor makes the camera follow the given actor.
+func (r *Room) CameraFollowActor(actor *Actor) error {
+	if actor.Room != r {
+		return fmt.Errorf("Actor %s is not in the room", actor.Name)
+	}
+	r.camfollow = actor
+	return nil
+}
+
+// CameraMoveTo moves the camera to the given position.
+func (r *Room) CameraMoveTo(pos int) {
+	r.camtarget = pos
+	r.camfollow = nil
+}
+
+// CameraPos returns the current camera position.
+func (r *Room) CameraPos() int {
+	return r.campos
+}
+
 // DeclareObject declares an object in the room.
 func (r *Room) DeclareObject(obj *Object) {
 	obj.Room = r
@@ -41,7 +68,7 @@ func (r *Room) DeclareWalkBoxMatrix(walkboxes []*WalkBox) {
 
 // Draw renders the room in the viewport.
 func (r *Room) Draw(debugEnabled bool) {
-	r.background.Draw(NewPos(0, 0), White)
+	r.background.Draw(NewPos(-r.campos, 0), White)
 	items := make([]RoomItem, 0, len(r.actors)+len(r.objects))
 	for _, actor := range r.actors {
 		items = append(items, actor)
@@ -57,8 +84,10 @@ func (r *Room) Draw(debugEnabled bool) {
 	}
 
 	if debugEnabled && r.wbmatrix != nil {
-		r.wbmatrix.Draw()
+		r.wbmatrix.Draw(r.campos)
 	}
+
+	r.updateCamera()
 }
 
 // Load the room resources.
@@ -76,6 +105,8 @@ func (r *Room) Load(res ResourceLoader) {
 
 // ItemAt returns the item at the given position in the room.
 func (r *Room) ItemAt(pos Position) RoomItem {
+	pos.X += r.campos
+
 	if r == nil {
 		return nil
 	}
@@ -111,6 +142,31 @@ func (r *Room) PutActor(actor *Actor) {
 		}
 	}
 	r.actors = append(r.actors, actor)
+}
+
+func (r *Room) updateCamera() {
+	if r.camfollow != nil {
+		r.camtarget = int(r.camfollow.pos.X) - ScreenWidth/2
+	}
+	if r.campos != r.camtarget {
+		if r.campos < r.camtarget {
+			r.campos += RoomCameraSpeed
+			if r.campos > r.camtarget {
+				r.campos = r.camtarget
+			}
+		} else {
+			r.campos -= RoomCameraSpeed
+			if r.campos < r.camtarget {
+				r.campos = r.camtarget
+			}
+		}
+		if r.campos < 0 {
+			r.campos = 0
+		}
+		if r.campos > int(r.background.Width())-ScreenWidth {
+			r.campos = int(r.background.Width()) - ScreenWidth
+		}
+	}
 }
 
 // RoomItem is an item from a room that can be represented in the viewport.
