@@ -70,7 +70,7 @@ func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
 	}
 
 	waypoints := cmd.Actor.Room.wbmatrix.FindPath(cmd.Actor.pos.ToPos(), cmd.Position)
-	done.Bind(cmd.Actor.Do(WalkingTo(waypoints, app.debugEnabled)))
+	done.Bind(cmd.Actor.Do(WalkingTo(waypoints, app)))
 }
 
 // ActorWalkToItem is a command that will make an actor walk to a room item.
