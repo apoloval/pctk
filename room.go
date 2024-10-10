@@ -84,7 +84,7 @@ func (r *Room) Draw(debugEnabled bool) {
 	}
 
 	if debugEnabled && r.wbmatrix != nil {
-		r.wbmatrix.Draw()
+		r.wbmatrix.Draw(r.campos)
 	}
 
 	r.updateCamera()
