@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"fmt"
 	"image"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -27,14 +28,39 @@ func NewMouseCursor(cam *rl.Camera2D) *MouseCursor {
 }
 
 // Draw renders the mouse cursor at the current position.
-func (m *MouseCursor) Draw() {
+func (m *MouseCursor) Draw(debugEnabled bool) {
 	pos := m.Position()
 	if m.Enabled && rl.IsCursorOnScreen() {
 		rl.DrawTexture(m.tx, int32(pos.X-7), int32(pos.Y-7), m.col)
 		m.col.R = max(0xAA, m.col.R+6)
 		m.col.G = max(0xAA, m.col.G+6)
 		m.col.B = max(0xAA, m.col.B+6)
+		if debugEnabled {
+			m.drawCoords()
+		}
 	}
+}
+
+// drawCoords renders the mouse coords at the current position.
+func (m *MouseCursor) drawCoords() {
+	pos := m.Position()
+	cursorText := fmt.Sprintf("(%d,%d)", int32(pos.X), int32(pos.Y))
+	textWidth := int(rl.MeasureText(cursorText, 1))
+	fontSize := 10
+	cursorCoordsX := int32(pos.X - textWidth/2)
+	cursorCoordsY := int32(pos.Y + fontSize)
+
+	if pos.X < textWidth {
+		cursorCoordsX = int32(pos.X + textWidth/2)
+	} else if pos.X > ScreenWidth-textWidth {
+		cursorCoordsX = int32(pos.X - textWidth)
+	}
+
+	if pos.Y > ScreenHeight-fontSize*2 {
+		cursorCoordsY = int32(pos.Y - (fontSize * 2))
+	}
+
+	rl.DrawText(cursorText, cursorCoordsX, cursorCoordsY, int32(fontSize), m.col)
 }
 
 // OnScreen returns true if the mouse is on the screen.

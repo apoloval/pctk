@@ -462,12 +462,12 @@ func (p *ControlPane) Draw(app *App) {
 		hover := p.hover(app, p.cursor.Position())
 		p.action.Draw(app, hover)
 		p.inv.Draw(app, p.cursor)
-		p.cursor.Draw()
+		p.cursor.Draw(app.debugEnabled)
 	case ControlPaneDialog:
 		if p.choice != nil {
 			p.choice.Draw(p.cursor.Position())
 		}
-		p.cursor.Draw()
+		p.cursor.Draw(false)
 	}
 }
 
