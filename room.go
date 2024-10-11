@@ -2,7 +2,6 @@ package pctk
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"slices"
 )
@@ -17,9 +16,6 @@ type Room struct {
 	actors     []*Actor           // The actors in the room
 	background *Image             // The background image of the room
 	callrecv   ScriptCallReceiver // The call receiver for the room
-	campos     int                // The camera position
-	camtarget  int                // The camera target position
-	camfollow  *Actor             // The actor to follow with the camera
 	objects    []*Object          // The objects declared in the room
 	script     *Script            // The script where this room is defined. Used to call the room functions.
 	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
@@ -35,24 +31,12 @@ func NewRoom(bg *Image) *Room {
 	}
 }
 
-// CameraFollowActor makes the camera follow the given actor.
-func (r *Room) CameraFollowActor(actor *Actor) error {
-	if actor.Room != r {
-		return fmt.Errorf("Actor %s is not in the room", actor.Name)
+// Rect returns the rectangle of the room.
+func (r *Room) Rect() Rectangle {
+	if r.background == nil {
+		return Rectangle{}
 	}
-	r.camfollow = actor
-	return nil
-}
-
-// CameraMoveTo moves the camera to the given position.
-func (r *Room) CameraMoveTo(pos int) {
-	r.camtarget = pos
-	r.camfollow = nil
-}
-
-// CameraPos returns the current camera position.
-func (r *Room) CameraPos() int {
-	return r.campos
+	return NewRect(0, 0, int(r.background.Width()), int(r.background.Height()))
 }
 
 // DeclareObject declares an object in the room.
@@ -67,8 +51,8 @@ func (r *Room) DeclareWalkBoxMatrix(walkboxes []*WalkBox) {
 }
 
 // Draw renders the room in the viewport.
-func (r *Room) Draw(debugEnabled bool) {
-	r.background.Draw(NewPos(-r.campos, 0), White)
+func (r *Room) Draw(frame *Frame) {
+	r.background.Draw(NewPos(0, 0), White)
 	items := make([]RoomItem, 0, len(r.actors)+len(r.objects))
 	for _, actor := range r.actors {
 		items = append(items, actor)
@@ -80,14 +64,12 @@ func (r *Room) Draw(debugEnabled bool) {
 		return a.ItemPosition().Y - b.ItemPosition().Y
 	})
 	for _, item := range items {
-		item.Draw()
+		item.Draw(frame)
 	}
 
-	if debugEnabled && r.wbmatrix != nil {
-		r.wbmatrix.Draw(r.campos)
+	if frame.DebugEnabled && r.wbmatrix != nil {
+		r.wbmatrix.Draw()
 	}
-
-	r.updateCamera()
 }
 
 // Load the room resources.
@@ -105,8 +87,6 @@ func (r *Room) Load(res ResourceLoader) {
 
 // ItemAt returns the item at the given position in the room.
 func (r *Room) ItemAt(pos Position) RoomItem {
-	pos.X += r.campos
-
 	if r == nil {
 		return nil
 	}
@@ -144,36 +124,11 @@ func (r *Room) PutActor(actor *Actor) {
 	r.actors = append(r.actors, actor)
 }
 
-func (r *Room) updateCamera() {
-	if r.camfollow != nil {
-		r.camtarget = int(r.camfollow.pos.X) - ScreenWidth/2
-	}
-	if r.campos != r.camtarget {
-		if r.campos < r.camtarget {
-			r.campos += RoomCameraSpeed
-			if r.campos > r.camtarget {
-				r.campos = r.camtarget
-			}
-		} else {
-			r.campos -= RoomCameraSpeed
-			if r.campos < r.camtarget {
-				r.campos = r.camtarget
-			}
-		}
-		if r.campos < 0 {
-			r.campos = 0
-		}
-		if r.campos > int(r.background.Width())-ScreenWidth {
-			r.campos = int(r.background.Width()) - ScreenWidth
-		}
-	}
-}
-
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
 	CallReceiver() ScriptCallReceiver
 	Caption() string
-	Draw()
+	Draw(*Frame)
 	ItemClass() ObjectClass
 	ItemOwner() *Actor
 	ItemPosition() Position
@@ -196,16 +151,16 @@ func (a *App) StartRoom(room *Room) Future {
 	var job Future
 	for _, r := range a.rooms {
 		if r == room {
-			if a.room != nil {
+			if prev := a.viewport.Room; prev != nil {
 				job = RecoverWithValue(
-					a.room.script.CallMethod(a.room.callrecv, "exit", nil),
+					prev.script.CallMethod(prev.callrecv, "exit", nil),
 					func(err error) any {
 						log.Printf("Failed to call room exit function: %v", err)
 						return nil
 					},
 				)
 			}
-			a.room = room
+			a.viewport.Room = room
 			room.Load(a.res)
 			job = Continue(job, func(a any) Future {
 				return RecoverWithValue(
@@ -222,10 +177,4 @@ func (a *App) StartRoom(room *Room) Future {
 	prom := NewPromise()
 	prom.CompleteWithErrorf("Room not declared")
 	return prom
-}
-
-func (a *App) drawSceneViewport() {
-	if a.room != nil {
-		a.room.Draw(a.debugEnabled)
-	}
 }

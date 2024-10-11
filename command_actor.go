@@ -64,7 +64,7 @@ type ActorWalkToPosition struct {
 }
 
 func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
-	if cmd.Actor.Room != app.room {
+	if cmd.Actor.Room != app.viewport.Room {
 		done.CompleteWithErrorf("actor %s is not in the room", cmd.Actor.Caption())
 		return
 	}
@@ -82,7 +82,7 @@ type ActorWalkToItem struct {
 func (cmd ActorWalkToItem) Execute(app *App, done *Promise) {
 	switch item := cmd.Item.(type) {
 	case *Actor:
-		if item.Room != app.room {
+		if item.Room != app.viewport.Room {
 			done.CompleteWithErrorf("actor %s is not in the room", item.Caption())
 			return
 		}

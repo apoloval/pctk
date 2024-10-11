@@ -23,16 +23,16 @@ func (cmd RoomShow) Execute(app *App, done *Promise) {
 }
 
 // RoomCameraTo is a command that will move the camera to the given position.
-func RoomCameraTo(room *Room, pos int) CommandFunc {
+func RoomCameraTo(vp *Viewport, pos int) CommandFunc {
 	return func(a *App) (any, error) {
-		room.CameraMoveTo(pos)
+		vp.CameraMoveTo(pos)
 		return nil, nil
 	}
 }
 
-func RoomCameraFollowActor(room *Room, actor *Actor) CommandFunc {
+func RoomCameraFollowActor(vp *Viewport, actor *Actor) CommandFunc {
 	return func(a *App) (any, error) {
-		room.CameraFollowActor(actor)
+		vp.CameraFollowActor(actor)
 		return nil, nil
 	}
 }

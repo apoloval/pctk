@@ -16,43 +16,43 @@ export {
             box0 = walkbox {
                 vertices = {
                     pos {x=5, y=140}, 
-                    pos {x=320, y=140}, 
-                    pos {x=270, y=110}, 
-                    pos {x=80, y=110},
+                    pos {x=475, y=140}, 
+                    pos {x=475, y=117}, 
+                    pos {x=80, y=117},
                 }, 
                 scale = 1,
             },
             box1 = walkbox {
                 vertices = {
-                    pos {x=80, y=110}, 
-                    pos {x=270, y=110}, 
-                    pos {x=175, y=100}, 
-                    pos {x=145, y=100},
+                    pos {x=80, y=117}, 
+                    pos {x=300, y=117}, 
+                    pos {x=230, y=100}, 
+                    pos {x=100, y=100},
                 }, 
                 scale = 0.95,
             },
 	        box2 = walkbox {
                 vertices = { 
-                    pos {x=145, y=100}, 
-                    pos {x=175, y=100}, 
-                    pos {x=175, y=90}, 
-                    pos {x=145, y=90}
+                    pos {x=100, y=100}, 
+                    pos {x=230, y=100}, 
+                    pos {x=215, y=90}, 
+                    pos {x=115, y=90}
                 }, 
                 scale = 0.8,
             },
 	        box3 = walkbox {
                 vertices = { 
-                    pos {x=145, y=90}, 
-                    pos {x=175, y=90}, 
-                    pos {x=175, y=80}, 
-                    pos {x=145, y=80},
+                    pos {x=115, y=90}, 
+                    pos {x=215, y=90}, 
+                    pos {x=197, y=82}, 
+                    pos {x=128, y=82},
                 }, 
                 scale = 0.6,
             },
 	        box4 = walkbox {
                 vertices = {
-                    pos {x=155, y=80}, 
-                    pos {x=165, y=80}, 
+                    pos {x=155, y=82}, 
+                    pos {x=165, y=82}, 
                     pos {x=165, y=75}, 
                     pos {x=155, y=75},
                 }, 
@@ -83,7 +83,7 @@ export {
 }
 
 function melee:enter()
-    local skipintro = true
+    local skipintro = false
 
     pirates:show {
         pos = pos {x=38, y=137},         
@@ -132,6 +132,7 @@ function melee:enter()
         pirates:say("Who has the keys?", { color = common.yellow }):wait()
         sleep(1000)
         pirates:say("Me!")
+        sleep(2000)
     end
 
     guybrush:select()

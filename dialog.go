@@ -79,35 +79,3 @@ func (d *Dialog) Draw() {
 	}
 	DrawDialogText(d.text, d.pos, d.color)
 }
-
-// BeginDialog will prepare the dialog to be shown.
-func (a *App) BeginDialog(dialog *Dialog) {
-	dialog.Begin()
-	if actor := dialog.Actor(); actor != nil {
-		a.ClearDialogsFrom(actor)
-		actor.dialog = dialog
-	}
-	a.dialogs = append(a.dialogs, *dialog)
-}
-
-// ClearDialogsFrom will remove all dialogs from the given actor.
-func (a *App) ClearDialogsFrom(actor *Actor) {
-	dialogs := make([]Dialog, 0, len(a.dialogs))
-	for _, d := range a.dialogs {
-		if d.done == nil || d.Actor() != actor {
-			dialogs = append(dialogs, d)
-		}
-	}
-	a.dialogs = dialogs
-}
-
-func (a *App) drawDialogs() {
-	dialogs := make([]Dialog, 0, len(a.dialogs))
-	for _, d := range a.dialogs {
-		d.Draw()
-		if !d.Done().IsCompleted() {
-			dialogs = append(dialogs, d)
-		}
-	}
-	a.dialogs = dialogs
-}

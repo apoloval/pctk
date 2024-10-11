@@ -1006,18 +1006,20 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "camfollow", func(l *LuaInterpreter) int {
-		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		l.CheckEntity(1, ScriptEntityRoom)
 		actor := l.CheckEntity(2, ScriptEntityActor).(*Actor)
-		_, err := app.RunCommand(RoomCameraFollowActor(room, actor)).Wait()
+		// TODO: hack obtaining viewport
+		_, err := app.RunCommand(RoomCameraFollowActor(&app.viewport, actor)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error making camera follow actor: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "camto", func(l *LuaInterpreter) int {
-		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		l.CheckEntity(1, ScriptEntityRoom)
 		pos := lua.CheckInteger(l.State, 2)
-		_, err := app.RunCommand(RoomCameraTo(room, pos)).Wait()
+		// TODO: hack obtaining viewport
+		_, err := app.RunCommand(RoomCameraTo(&app.viewport, pos)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error moving camera to position: %s", err.Error())
 		}
