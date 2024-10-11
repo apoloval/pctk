@@ -7,6 +7,7 @@ import (
 
 const (
 	DefaultAnimationDelay = 100 * time.Millisecond
+	DefaultScale          = 1.0
 )
 
 // Animation represents a sequence of images that can be played.
@@ -82,7 +83,7 @@ func (a *Animation) BinaryDecode(r io.Reader) error {
 }
 
 // Draw renders the animation in the viewport.
-func (a *Animation) Draw(sprites *SpriteSheet, pos Position) {
+func (a *Animation) Draw(sprites *SpriteSheet, pos Position, scale float32) {
 	if a == nil {
 		return
 	}
@@ -98,6 +99,7 @@ func (a *Animation) Draw(sprites *SpriteSheet, pos Position) {
 		a.frames[a.currentFrame].col,
 		a.frames[a.currentFrame].row,
 		pos,
+		scale,
 		a.flip,
 	)
 }

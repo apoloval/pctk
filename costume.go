@@ -83,8 +83,8 @@ func (c *Costume) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (c *Costume) draw(act CostumeAction, pos Position) {
+func (c *Costume) draw(act CostumeAction, pos Position, scale float32) {
 	if anim := c.anims[act]; anim != nil {
-		anim.Draw(c.sprites, pos)
+		anim.Draw(c.sprites, pos, scale)
 	}
 }

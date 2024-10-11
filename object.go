@@ -50,7 +50,7 @@ func (o *Object) Draw(f *Frame) {
 	}
 	if st := o.CurrentState(); st != nil && st.Anim != nil {
 		pos := o.Pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H))
-		st.Anim.Draw(o.sprites, pos)
+		st.Anim.Draw(o.sprites, pos, DefaultScale)
 	}
 }
 

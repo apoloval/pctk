@@ -187,7 +187,8 @@ func Standing(dir Direction) *Action {
 				costume = CostumeSpeak(dir)
 			}
 			if cos := a.costume; cos != nil {
-				cos.draw(costume, a.costumePos())
+				w, _ := a.Room.wbmatrix.walkBoxAt(a.pos)
+				cos.draw(costume, a.costumePos(), w.Scale())
 			}
 		},
 	}
@@ -209,9 +210,10 @@ func WalkingTo(w []*WayPoint, app *App) *Action {
 			}
 
 			currentTarget := w[0].Position
+			scale := w[0].Walkbox.Scale()
 
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
+				cos.draw(CostumeWalk(a.lookAt), a.costumePos(), scale)
 			}
 
 			if a.pos.ToPos() == currentTarget {
@@ -226,7 +228,7 @@ func WalkingTo(w []*WayPoint, app *App) *Action {
 			}
 
 			a.lookAt = a.pos.ToPos().DirectionTo(currentTarget)
-			a.pos = a.pos.Move(currentTarget.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
+			a.pos = a.pos.Move(currentTarget.ToPosf(), a.speed.Scale(rl.GetFrameTime()*scale))
 		},
 	}
 }
@@ -237,7 +239,8 @@ func SpeakingTo(dialog Future) *Action {
 		prom: NewPromise(),
 		f: func(f *Frame, a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
+				w, _ := a.Room.wbmatrix.walkBoxAt(a.pos)
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos(), w.Scale())
 			}
 			if dialog.IsCompleted() {
 				done.Complete()
