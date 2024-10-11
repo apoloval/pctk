@@ -16,21 +16,19 @@ type App struct {
 
 	actors   []*Actor
 	defaults *ObjectDefaults
-	dialogs  []Dialog
+	ego      *Actor
+	music    *Music
 	objects  []*Object
 	rooms    []*Room
-	room     *Room
 	scripts  map[ResourceRef]*Script
+	sound    *Sound
 
+	cam      Camera
 	control  ControlPane
 	commands CommandQueue
-
-	cam         rl.Camera2D
-	cursorTx    rl.Texture2D
-	cursorColor Color
-	music       *Music
-	sound       *Sound
-	ego         *Actor
+	mouse    *Mouse
+	frame    *Frame
+	viewport Viewport
 }
 
 // New creates a new pctk application.
@@ -62,7 +60,7 @@ func (a *App) Run() {
 	defer a.Close()
 
 	for !rl.WindowShouldClose() {
-		a.run()
+		a.processFrame()
 	}
 }
 
@@ -72,20 +70,26 @@ func (a *App) init() {
 	rl.SetTargetFPS(60)
 	rl.HideCursor()
 
-	a.cam.Zoom = float32(a.screenZoom)
-	a.control.Init(&a.cam)
+	a.mouse = NewMouseCursor()
+	a.frame = NewFrame(a.mouse, a.debugEnabled)
+	a.cam = a.cam.WithZoom(float32(a.screenZoom))
+	a.viewport.Init(a.cam)
+	a.control.Init(a, a.cam, &a.viewport)
 }
 
-func (a *App) run() {
+func (a *App) processFrame() {
+	a.frame.Num++
+	a.frame.DebugEnabled = a.debugEnabled
+
 	a.updateMusic()
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
-	rl.BeginMode2D(a.cam)
-	a.drawSceneViewport()
-	a.control.Draw(a)
-	a.drawDialogs()
-	rl.EndMode2D()
+
+	a.viewport.ProcessFrame(a.frame)
+	a.control.ProcessFrame(a, a.frame)
+	a.frame.WithCamera(&a.cam, func(f *Frame) {
+		a.mouse.Draw(f)
+	})
 	rl.EndDrawing()
-	a.control.processControlInputs(a)
 	a.commands.Execute(a)
 }

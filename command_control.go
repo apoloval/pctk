@@ -1,6 +1,8 @@
 package pctk
 
-import "errors"
+import (
+	"errors"
+)
 
 // ControlPaneEnable is a command that will enable the control panel.
 func ControlPaneEnable() CommandFunc {
@@ -21,7 +23,7 @@ func ControlPaneDisable() CommandFunc {
 // MouseCursorOn is a command that will enable the mouse cursor.
 func MouseCursorOn() CommandFunc {
 	return func(a *App) (any, error) {
-		a.control.cursor.Enabled = true
+		a.mouse.Enabled = true
 		return nil, nil
 	}
 }
@@ -29,7 +31,7 @@ func MouseCursorOn() CommandFunc {
 // MouseCursorOff is a command that will disable the mouse cursor.
 func MouseCursorOff() CommandFunc {
 	return func(a *App) (any, error) {
-		a.control.cursor.Enabled = false
+		a.mouse.Enabled = false
 		return nil, nil
 	}
 }

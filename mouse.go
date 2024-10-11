@@ -1,25 +1,22 @@
 package pctk
 
 import (
-	"fmt"
 	"image"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// MouseCursor is a custom mouse cursor.
-type MouseCursor struct {
+// Mouse is a custom mouse cursor.
+type Mouse struct {
 	Enabled bool
 
-	cam *rl.Camera2D
 	col Color
 	tx  rl.Texture2D
 }
 
 // NewMouseCursor creates a new mouse cursor.
-func NewMouseCursor(cam *rl.Camera2D) *MouseCursor {
-	return &MouseCursor{
-		cam: cam,
+func NewMouseCursor() *Mouse {
+	return &Mouse{
 		col: rl.NewColor(0xAA, 0xAA, 0xAA, 0xFF),
 		tx: rl.LoadTextureFromImage(
 			rl.NewImage(mouseCursorData(), 15, 15, 1, rl.UncompressedR8g8b8a8),
@@ -28,59 +25,43 @@ func NewMouseCursor(cam *rl.Camera2D) *MouseCursor {
 }
 
 // Draw renders the mouse cursor at the current position.
-func (m *MouseCursor) Draw(debugEnabled bool) {
-	pos := m.Position()
+func (m *Mouse) Draw(frame *Frame) {
+	pos := m.PositionRelative(frame.Camera)
 	if m.Enabled && rl.IsCursorOnScreen() {
 		rl.DrawTexture(m.tx, int32(pos.X-7), int32(pos.Y-7), m.col)
 		m.col.R = max(0xAA, m.col.R+6)
 		m.col.G = max(0xAA, m.col.G+6)
 		m.col.B = max(0xAA, m.col.B+6)
-		if debugEnabled {
-			m.drawCoords()
-		}
 	}
 }
 
-// drawCoords renders the mouse coords at the current position.
-func (m *MouseCursor) drawCoords() {
-	pos := m.Position()
-	cursorText := fmt.Sprintf("(%d,%d)", int32(pos.X), int32(pos.Y))
-	textWidth := int(rl.MeasureText(cursorText, 1))
-	fontSize := 10
-	cursorCoordsX := int32(pos.X - textWidth/2)
-	cursorCoordsY := int32(pos.Y + fontSize)
+// LeftClick returns true if the left mouse button is pressed.
+func (m *Mouse) LeftClick() bool {
+	return rl.IsMouseButtonPressed(rl.MouseLeftButton)
+}
 
-	if pos.X < textWidth {
-		cursorCoordsX = int32(pos.X + textWidth/2)
-	} else if pos.X > ScreenWidth-textWidth {
-		cursorCoordsX = int32(pos.X - textWidth)
-	}
-
-	if pos.Y > ScreenHeight-fontSize*2 {
-		cursorCoordsY = int32(pos.Y - (fontSize * 2))
-	}
-
-	rl.DrawText(cursorText, cursorCoordsX, cursorCoordsY, int32(fontSize), m.col)
+// RightClick returns true if the right mouse button is pressed.
+func (m *Mouse) RightClick() bool {
+	return rl.IsMouseButtonPressed(rl.MouseRightButton)
 }
 
 // OnScreen returns true if the mouse is on the screen.
-func (m *MouseCursor) OnScreen() bool {
+func (m *Mouse) OnScreen() bool {
 	return rl.IsCursorOnScreen()
 }
 
-// Position returns the current mouse position in the screen.
-func (m *MouseCursor) Position() Position {
+// PositionAbsolute returns the absolute current mouse position (in terms of screen native
+// resolution).
+func (m *Mouse) PositionAbsolute() Position {
 	if !m.Enabled {
 		return Position{-1, -1}
 	}
-	return positionFromRaylib(
-		rl.GetScreenToWorld2D(rl.GetMousePosition(), *m.cam),
-	)
+	return positionFromRaylib(rl.GetMousePosition())
 }
 
-// MouseIsInto returns true if the mouse is into the given region.
-func (m *MouseCursor) IsInto(rect Rectangle) bool {
-	return rl.CheckCollisionPointRec(m.Position().toRaylib(), rect.toRaylib())
+// PositionRelative returns the current mouse position relative to the camera.
+func (m *Mouse) PositionRelative(cam *Camera) Position {
+	return cam.ScreenToWorldPosition(m.PositionAbsolute())
 }
 
 func mouseCursorData() []byte {

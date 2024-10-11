@@ -11,6 +11,6 @@ type ShowDialog struct {
 
 func (cmd ShowDialog) Execute(app *App, done *Promise) {
 	dialog := NewDialog(cmd.Actor, cmd.Text, cmd.Position, cmd.Color, cmd.Speed)
-	app.BeginDialog(dialog)
+	app.viewport.BeginDialog(dialog)
 	done.Bind(dialog.Done())
 }

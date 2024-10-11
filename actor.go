@@ -96,12 +96,12 @@ func (a *Actor) Do(action *Action) Future {
 }
 
 // Draw renders the actor in the viewport.
-func (a *Actor) Draw() {
+func (a *Actor) Draw(frame *Frame) {
 	if a.act == nil {
 		a.act = Standing(a.lookAt)
 	}
 
-	if a.act.RunFrame(a) {
+	if a.act.RunFrame(frame, a) {
 		a.act = nil
 	}
 }
@@ -163,9 +163,6 @@ func (a *Actor) ItemUsePosition() (Position, Direction) {
 
 func (a *Actor) costumePos() Position {
 	pos := a.pos.ToPos().Sub(NewPos((a.Size.W / 2), a.Size.H-a.Elev))
-	if a.Room != nil {
-		pos.X -= a.Room.campos
-	}
 	return pos
 }
 
@@ -176,14 +173,14 @@ func (a *Actor) dialogPos() Position {
 // Action is an action that an actor is performing.
 type Action struct {
 	prom *Promise
-	f    func(*Actor, *Promise)
+	f    func(*Frame, *Actor, *Promise)
 }
 
 // Standing creates a new action that makes an actor stand in the given direction.
 func Standing(dir Direction) *Action {
 	return &Action{
 		prom: NewPromise(),
-		f: func(a *Actor, done *Promise) {
+		f: func(f *Frame, a *Actor, done *Promise) {
 			a.lookAt = dir
 			costume := CostumeIdle(dir)
 			if a.IsSpeaking() {
@@ -200,15 +197,13 @@ func Standing(dir Direction) *Action {
 func WalkingTo(w []*WayPoint, app *App) *Action {
 	return &Action{
 		prom: NewPromise(),
-		f: func(a *Actor, done *Promise) {
-			if app.debugEnabled {
+		f: func(f *Frame, a *Actor, done *Promise) {
+			if f.DebugEnabled {
 				end := w[len(w)-1].Position
 				alpha := uint8(255 - a.pos.Distance(end.ToPosf()))
 				for i := 0; i < len(w)-1; i++ {
 					p1 := w[i].Position
 					p2 := w[i+1].Position
-					p1.X -= app.room.campos
-					p2.X -= app.room.campos
 					rl.DrawLineEx(p1.toRaylib(), p2.toRaylib(), 2, rl.NewColor(255, 255, 0, alpha))
 				}
 			}
@@ -240,7 +235,7 @@ func WalkingTo(w []*WayPoint, app *App) *Action {
 func SpeakingTo(dialog Future) *Action {
 	return &Action{
 		prom: NewPromise(),
-		f: func(a *Actor, done *Promise) {
+		f: func(f *Frame, a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
 			}
@@ -262,8 +257,8 @@ func (a *Action) Done() Future {
 }
 
 // RunFrame runs a frame of the action.
-func (a *Action) RunFrame(actor *Actor) (completed bool) {
-	a.f(actor, a.prom)
+func (a *Action) RunFrame(frame *Frame, actor *Actor) (completed bool) {
+	a.f(frame, actor, a.prom)
 	return a.prom.IsCompleted()
 }
 
@@ -291,12 +286,12 @@ func (a *App) SelectEgo(actor *Actor) {
 
 // ActorShow shows the actor in the active room
 func (a *App) ActorShow(actor *Actor, pos Position, lookAt Direction) error {
-	if a.room == nil {
+	if a.viewport.Room == nil {
 		return errors.New("no active room to show actor")
 	}
 
 	actor.Load(a.res)
-	a.room.PutActor(actor)
-	actor.Locate(a.room, pos, lookAt)
+	a.viewport.Room.PutActor(actor)
+	actor.Locate(a.viewport.Room, pos, lookAt)
 	return nil
 }

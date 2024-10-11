@@ -44,15 +44,12 @@ func (o *Object) CurrentState() *ObjectState {
 }
 
 // Draw renders the object in the viewport.
-func (o *Object) Draw() {
+func (o *Object) Draw(f *Frame) {
 	if !o.IsVisible() {
 		return
 	}
 	if st := o.CurrentState(); st != nil && st.Anim != nil {
 		pos := o.Pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H))
-		if o.Room != nil {
-			pos = pos.Sub(NewPos(o.Room.CameraPos(), 0))
-		}
 		st.Anim.Draw(o.sprites, pos)
 	}
 }

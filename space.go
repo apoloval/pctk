@@ -26,7 +26,7 @@ var (
 	ViewportRect = NewRect(0, 0, ScreenWidth, ViewportHeight)
 
 	// ControlPaneRect is the rectangle that represents the control pane.
-	ControlPaneRect = NewRect(0, ViewportHeight, ScreenWidth, ControlPaneHeight)
+	ControlPaneRect = NewRect(0, 0, ScreenWidth, ControlPaneHeight)
 )
 
 // Position represents a 2D position.

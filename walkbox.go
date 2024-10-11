@@ -43,13 +43,11 @@ func (w *WalkBox) Scale() float32 {
 }
 
 // Draws the edges of the WalkBox.
-func (w *WalkBox) draw(campos int) {
+func (w *WalkBox) draw() {
 	numVertices := len(w.vertices)
 	for i := 0; i < numVertices; i++ {
 		p1 := w.vertices[i]
 		p2 := w.vertices[(i+1)%numVertices]
-		p1.X -= float32(campos)
-		p2.X -= float32(campos)
 		rl.DrawLineEx(p1.toRaylib(), p2.toRaylib(), 1.2, rl.NewColor(0x55, 0xFF, 0x55, 0x7D))
 	}
 }
@@ -170,9 +168,9 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 }
 
 // WalkBoxes draw walkable boxes of the WalkBoxMatrix.
-func (wm *WalkBoxMatrix) Draw(campos int) {
+func (wm *WalkBoxMatrix) Draw() {
 	for _, wb := range wm.walkBoxes {
-		wb.draw(campos)
+		wb.draw()
 	}
 }
 

@@ -53,31 +53,29 @@ type VerbSlot struct {
 }
 
 // Draw renders the verb slot in the control pane.
-func (s VerbSlot) Draw(app *App, m *MouseCursor) {
+func (s VerbSlot) Draw(app *App, frame *Frame, hover RoomItem) {
 	rect := s.Rect()
 	color := ControlVerbColor
-	if m.IsInto(rect) {
+	if frame.MouseIn(rect) {
 		color = ControlVerbHoverColor
 	}
-	if room := app.room; room != nil {
-		if item := room.ItemAt(m.Position()); item != nil {
-			switch s.Verb {
-			case VerbOpen:
-				if item.ItemClass().IsOneOf(ObjectClassOpenable) {
-					color = ControlVerbHoverColor
-				}
-			case VerbClose:
-				if item.ItemClass().IsOneOf(ObjectClassCloseable) {
-					color = ControlVerbHoverColor
-				}
-			case VerbTalkTo:
-				if item.ItemClass().IsOneOf(ObjectClassPerson) {
-					color = ControlVerbHoverColor
-				}
-			case VerbLookAt:
-				if item.ItemClass().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
-					color = ControlVerbHoverColor
-				}
+	if hover != nil {
+		switch s.Verb {
+		case VerbOpen:
+			if hover.ItemClass().IsOneOf(ObjectClassOpenable) {
+				color = ControlVerbHoverColor
+			}
+		case VerbClose:
+			if hover.ItemClass().IsOneOf(ObjectClassCloseable) {
+				color = ControlVerbHoverColor
+			}
+		case VerbTalkTo:
+			if hover.ItemClass().IsOneOf(ObjectClassPerson) {
+				color = ControlVerbHoverColor
+			}
+		case VerbLookAt:
+			if hover.ItemClass().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
+				color = ControlVerbHoverColor
 			}
 		}
 	}
@@ -88,7 +86,7 @@ func (s VerbSlot) Draw(app *App, m *MouseCursor) {
 // Rect returns the rectangle of the verb slot in the screen.
 func (v VerbSlot) Rect() Rectangle {
 	x := 2 + v.Col*ScreenWidth/6
-	y := ViewportHeight + (v.Row+1)*FontDefaultSize
+	y := (v.Row + 1) * FontDefaultSize
 	w := ScreenWidth / 6
 	h := FontDefaultSize
 	return NewRect(x, y, w, h)
@@ -96,14 +94,29 @@ func (v VerbSlot) Rect() Rectangle {
 
 // ActionSentence is a sentence that represents the action the player is doing.
 type ActionSentence struct {
+	app  *App // TODO: replace by an interface to send commands
 	verb Verb
 	args [2]RoomItem
 	fut  Future
 }
 
+// Init initializes the action sentence.
+func (s *ActionSentence) Init(app *App, vp *Viewport) {
+	s.app = app
+	vp.SubscribeEventHandler(func(e ViewportEvent) {
+		switch e.Type {
+		case ViewportEventLeftClick:
+			s.ProcessLeftClick(e.Pos, e.Item)
+		case ViewportEventRightClick:
+			s.ProcessRightClick(s.app, e.Pos, e.Item)
+		}
+	})
+	s.Reset(VerbWalkTo)
+}
+
 // Draw renders the action sentence in the control pane.
-func (s *ActionSentence) Draw(app *App, hover RoomItem) {
-	pos := NewPos(ScreenWidth/2, ViewportHeight)
+func (s *ActionSentence) Draw(hover RoomItem) {
+	pos := NewPos(ScreenWidth/2, 0)
 	action := s.line()
 	color := ControlActionColor
 	if s.fut != nil {
@@ -121,9 +134,9 @@ func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 }
 
 // ProcessInventoryClick processes a click in the inventory.
-func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
+func (s *ActionSentence) ProcessInventoryClick(obj *Object) {
 	if s.args[0] != nil {
-		s.interactWith(app, s.verb, s.args[0], obj)
+		s.interactWith(s.verb, s.args[0], obj)
 		return
 	}
 	switch s.verb {
@@ -133,14 +146,14 @@ func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
 			return
 		}
 	}
-	s.interactWith(app, s.verb, obj, nil)
+	s.interactWith(s.verb, obj, nil)
 }
 
 // ProcessLeftClick processes a left click in the control pane.
-func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomItem) {
+func (s *ActionSentence) ProcessLeftClick(click Position, item RoomItem) {
 	if item == nil {
 		if s.verb == VerbWalkTo || s.fut != nil {
-			s.walkToPos(app, click)
+			s.walkToPos(s.app, click)
 		}
 		return
 	}
@@ -152,10 +165,10 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 				s.args[0] = item
 				return
 			}
-			s.interactWith(app, s.verb, item, nil)
+			s.interactWith(s.verb, item, nil)
 		} else {
 			// Item is candidate to second argument.
-			s.interactWith(app, s.verb, s.args[0], item)
+			s.interactWith(s.verb, s.args[0], item)
 		}
 	}
 }
@@ -165,13 +178,13 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 	if item != nil {
 		// Execute quick action
 		if item.ItemClass().IsOneOf(ObjectClassPerson) {
-			s.interactWith(app, VerbTalkTo, item, nil)
+			s.interactWith(VerbTalkTo, item, nil)
 		} else if item.ItemClass().IsOneOf(ObjectClassOpenable) {
-			s.interactWith(app, VerbOpen, item, nil)
+			s.interactWith(VerbOpen, item, nil)
 		} else if item.ItemClass().IsOneOf(ObjectClassCloseable) {
-			s.interactWith(app, VerbClose, item, nil)
+			s.interactWith(VerbClose, item, nil)
 		} else {
-			s.interactWith(app, VerbLookAt, item, nil)
+			s.interactWith(VerbLookAt, item, nil)
 		}
 		return
 	}
@@ -194,6 +207,8 @@ func (s *ActionSentence) admits(item RoomItem) bool {
 			return !item.ItemClass().IsOneOf(ObjectClassPerson)
 		case VerbUse:
 			return !item.ItemClass().IsOneOf(ObjectClassPerson)
+		case VerbWalkTo:
+			return item.ItemOwner() == nil
 		default:
 			return true
 		}
@@ -231,25 +246,30 @@ func (s *ActionSentence) line() string {
 	return line
 }
 
-func (s *ActionSentence) interactWith(app *App, verb Verb, item, other RoomItem) {
+func (s *ActionSentence) interactWith(verb Verb, item, other RoomItem) {
 	s.verb = verb
 	s.args[0] = item
 	s.args[1] = other
 
 	var cmd Command
 	if verb == VerbWalkTo {
+		if item.ItemOwner() != nil {
+			// Cannot walk to an object in the inventory
+			s.Reset(VerbWalkTo)
+			return
+		}
 		cmd = ActorWalkToItem{
-			Actor: app.ego,
+			Actor: s.app.ego,
 			Item:  item,
 		}
 	} else {
 		cmd = ActorInteractWith{
-			Actor:   app.ego,
+			Actor:   s.app.ego,
 			Targets: [2]RoomItem{item, other},
 			Verb:    verb,
 		}
 	}
-	s.fut = app.RunCommandSequence(
+	s.fut = s.app.RunCommandSequence(
 		cmd,
 		CommandFunc(func(app *App) (any, error) {
 			s.Reset(VerbWalkTo)
@@ -258,11 +278,10 @@ func (s *ActionSentence) interactWith(app *App, verb Verb, item, other RoomItem)
 	)
 }
 
-func (s *ActionSentence) walkToPos(app *App, click Position) {
-	click.X += app.room.CameraPos()
+func (s *ActionSentence) walkToPos(app *App, pos Position) {
 	app.RunCommand(ActorWalkToPosition{
 		Actor:    app.ego,
-		Position: click,
+		Position: pos,
 	})
 	s.Reset(VerbWalkTo)
 }
@@ -281,15 +300,14 @@ type ControlInventory struct {
 }
 
 // Draw renders the inventory in the control pane.
-func (c *ControlInventory) Draw(app *App, m *MouseCursor) {
+func (c *ControlInventory) Draw(app *App, frame *Frame) {
 	if app.ego == nil {
 		return
 	}
-	mpos := m.Position()
 	for i, item := range app.ego.Inventory() {
 		rect := c.slotsRect[i]
 		color := ControlInventoryColor
-		if rect.Contains(mpos) {
+		if frame.MouseIn(rect) {
 			color = ControlInventoryHoverColor
 		}
 		DrawDefaultText(item.Caption(), rect.Pos, AlignLeft, color)
@@ -302,7 +320,7 @@ func (c *ControlInventory) Init() {
 	for i := range c.slotsRect {
 		c.slotsRect[i] = NewRect(
 			2+3*ScreenWidth/6+arrowsWidth,
-			ViewportHeight+FontDefaultSize*(i+1),
+			FontDefaultSize*(i+1),
 			2*ScreenWidth/6,
 			FontDefaultSize,
 		)
@@ -365,16 +383,16 @@ func (c *ControlSentenceChoice) Add(sentence string) {
 }
 
 // Draw the sentence choice in the control pane.
-func (c *ControlSentenceChoice) Draw(mouse Position) {
+func (c *ControlSentenceChoice) Draw(frame *Frame) {
 	for i, sentence := range c.Sentences {
 		rect := NewRect(
 			SentenceChoiceMagin,
-			ViewportHeight+SentenceChoiceMagin+FontDefaultSize*(i),
+			SentenceChoiceMagin+FontDefaultSize*(i),
 			ScreenWidth-2*SentenceChoiceMagin,
 			FontDefaultSize,
 		)
 		color := Green
-		if rect.Contains(mouse) {
+		if frame.MouseIn(rect) {
 			color = Yellow
 		}
 
@@ -400,7 +418,7 @@ func (c *ControlSentenceChoice) ProcessLeftClick(pos Position) bool {
 	for i, sent := range c.Sentences {
 		rect := NewRect(
 			SentenceChoiceMagin,
-			ViewportHeight+SentenceChoiceMagin+FontDefaultSize*(i),
+			SentenceChoiceMagin+FontDefaultSize*(i),
 			ScreenWidth-2*SentenceChoiceMagin,
 			FontDefaultSize,
 		)
@@ -419,15 +437,18 @@ func (c *ControlSentenceChoice) ProcessLeftClick(pos Position) bool {
 type ControlPane struct {
 	Mode ControlPaneMode // Mode is the mode of the control pane (default, dialog...)
 
-	action ActionSentence
-	cursor *MouseCursor
-	choice *ControlSentenceChoice
-	inv    ControlInventory
-	verbs  []VerbSlot
+	action    ActionSentence
+	camera    Camera
+	choice    *ControlSentenceChoice
+	hover     RoomItem
+	inventory ControlInventory
+	verbs     []VerbSlot
 }
 
 // Init initializes the control pane.
-func (p *ControlPane) Init(cam *rl.Camera2D) {
+func (p *ControlPane) Init(app *App, cam Camera, vp *Viewport) {
+	p.camera = cam.WithTarget(NewPos(0, -ViewportHeight))
+
 	p.Mode = ControlPaneDisabled
 	p.verbs = []VerbSlot{
 		{Verb: VerbOpen, Row: 0, Col: 0},
@@ -445,30 +466,23 @@ func (p *ControlPane) Init(cam *rl.Camera2D) {
 		{Verb: VerbTurnOn, Row: 2, Col: 2},
 		{Verb: VerbTurnOff, Row: 3, Col: 2},
 	}
-	p.action.Reset(VerbWalkTo)
-	p.inv.Init()
-	p.cursor = NewMouseCursor(cam)
+	p.action.Init(app, vp)
+	p.inventory.Init()
+	vp.SubscribeEventHandler(func(e ViewportEvent) {
+		switch e.Type {
+		case ViewportEventMouseEnter:
+			p.hover = e.Item
+		case ViewportEventMouseLeave:
+			p.hover = nil
+		}
+	})
 }
 
-// Draw renders the control panel in the viewport.
-func (p *ControlPane) Draw(app *App) {
-	switch p.Mode {
-	case ControlPaneDisabled:
-		return
-	case ControlPaneNormal:
-		for _, v := range p.verbs {
-			v.Draw(app, p.cursor)
-		}
-		hover := p.hover(app, p.cursor.Position())
-		p.action.Draw(app, hover)
-		p.inv.Draw(app, p.cursor)
-		p.cursor.Draw(app.debugEnabled)
-	case ControlPaneDialog:
-		if p.choice != nil {
-			p.choice.Draw(p.cursor.Position())
-		}
-		p.cursor.Draw(false)
-	}
+func (p *ControlPane) ProcessFrame(app *App, frame *Frame) {
+	frame.WithCamera(&p.camera, func(f *Frame) {
+		p.draw(app, f)
+		p.processInputs(app, f)
+	})
 }
 
 // Disable the control pane.
@@ -496,47 +510,56 @@ func (p *ControlPane) NewSentenceChoice() *ControlSentenceChoice {
 	return p.choice
 }
 
-func (p *ControlPane) hover(app *App, pos Position) RoomItem {
-	var item RoomItem
-	if ViewportRect.Contains(pos) && app.room != nil {
-		item = app.room.ItemAt(pos)
-	} else if ControlPaneRect.Contains(pos) {
-		if obj := p.inv.ObjectAt(app, pos); obj != nil {
-			item = obj
+func (p *ControlPane) draw(app *App, frame *Frame) {
+	switch p.Mode {
+	case ControlPaneDisabled:
+		return
+	case ControlPaneNormal:
+		for _, v := range p.verbs {
+			v.Draw(app, frame, p.hover)
+		}
+		p.action.Draw(p.hover)
+		p.inventory.Draw(app, frame)
+	case ControlPaneDialog:
+		if p.choice != nil {
+			p.choice.Draw(frame)
 		}
 	}
-	return item
 }
 
-func (p *ControlPane) processControlInputs(app *App) {
-	if !p.cursor.Enabled || app.ego == nil {
+func (p *ControlPane) processMouseOver(app *App, frame *Frame) {
+	if frame.MouseIn(ControlPaneRect) {
+		if obj := p.inventory.ObjectAt(app, frame.MouseRelativePos()); obj != nil {
+			p.hover = obj
+			return
+		}
+		p.hover = nil
+	}
+}
+
+func (p *ControlPane) processInputs(app *App, frame *Frame) {
+	if !frame.Mouse.Enabled || app.ego == nil {
 		return
 	}
-	pos := p.cursor.Position()
-	hover := p.hover(app, pos)
+
+	p.processMouseOver(app, frame)
+
+	mpos := frame.MouseRelativePos()
 	switch p.Mode {
 	case ControlPaneNormal:
-		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-			if ViewportRect.Contains(pos) {
-				p.action.ProcessLeftClick(app, pos, hover)
-			}
-			if ControlPaneRect.Contains(pos) {
-				p.normalProcessLeftClick(app, pos)
-			}
-		} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
-			if ViewportRect.Contains(pos) {
-				p.action.ProcessRightClick(app, pos, hover)
-			}
+		if frame.Mouse.LeftClick() && frame.MouseIn(ControlPaneRect) {
+			p.normalProcessLeftClick(app, mpos)
+		}
+		if frame.Mouse.RightClick() && p.hover != nil {
+			p.action.ProcessRightClick(app, mpos, p.hover)
 		}
 	case ControlPaneDialog:
-		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-			if p.choice.ProcessLeftClick(pos) {
-				p.Mode = ControlPaneDisabled
-				p.choice = nil
-			}
+		if frame.Mouse.LeftClick() && p.choice.ProcessLeftClick(mpos) {
+			p.Mode = ControlPaneDisabled
+			p.choice = nil
 		}
 	}
-	if app.debugMode && rl.IsKeyPressed(rl.KeyD) {
+	if app.debugMode && rl.IsKeyPressed(rl.KeyD) { // TODO: have a keyboard input in the frame
 		app.debugEnabled = !app.debugEnabled
 	}
 }
@@ -548,7 +571,7 @@ func (p *ControlPane) normalProcessLeftClick(app *App, click Position) {
 			return
 		}
 	}
-	if obj := p.inv.ObjectAt(app, click); obj != nil {
-		p.action.ProcessInventoryClick(app, obj)
+	if obj := p.inventory.ObjectAt(app, click); obj != nil {
+		p.action.ProcessInventoryClick(obj)
 	}
 }
