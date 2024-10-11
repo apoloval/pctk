@@ -147,6 +147,7 @@ func (wb *WalkBox) distance(p Positionf) float32 {
 // WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
 type WalkBoxMatrix struct {
 	walkBoxes       []*WalkBox
+	walkBoxesMap    map[string]*WalkBox
 	itineraryMatrix [][]int
 }
 
@@ -160,7 +161,12 @@ const (
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
 func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	wm := &WalkBoxMatrix{
-		walkBoxes: walkboxes,
+		walkBoxes:    walkboxes,
+		walkBoxesMap: make(map[string]*WalkBox),
+	}
+
+	for _, w := range walkboxes {
+		wm.walkBoxesMap[w.walkBoxID] = w
 	}
 
 	wm.resetItinerary()
@@ -219,9 +225,9 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 }
 
 // EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
-func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
-	if id >= 0 && id < len(wm.walkBoxes) {
-		wm.walkBoxes[id].enabled = enabled
+func (wm *WalkBoxMatrix) EnableWalkBox(id string, enabled bool) {
+	if w, ok := wm.walkBoxesMap[id]; ok {
+		w.enabled = enabled
 		wm.resetItinerary()
 	}
 }
@@ -239,8 +245,8 @@ func (wm *WalkBoxMatrix) FindPath(from, to Position) []*WayPoint {
 	var path []*WayPoint
 	fromf := from.ToPosf()
 	tof := to.ToPosf()
-	current, _ := wm.walkBoxAt(fromf)
-	target, _ := wm.walkBoxAt(tof)
+	current, _ := wm.walkBoxIndex(fromf)
+	target, _ := wm.walkBoxIndex(tof)
 
 	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: from})
 	for current != target {
@@ -275,7 +281,7 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 // walkBoxAt returns the walk box identifier at the given position or the closest one,
 // along with a boolean indicating inclusion. If the point is located between two or more
 // boxes, it returns the lowest walk box ID among them.
-func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
+func (wm *WalkBoxMatrix) walkBoxIndex(p Positionf) (id int, included bool) {
 	var minDistance float32 = math.MaxFloat32
 	id = InvalidWalkBox
 	for i, wb := range wm.walkBoxes {
@@ -291,6 +297,16 @@ func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (id int, included bool) {
 	}
 
 	return id, false
+}
+
+// walkBoxAt returns the walk box at the given position or the closest one,
+func (wm *WalkBoxMatrix) walkBoxAt(p Positionf) (w *WalkBox, included bool) {
+	id, include := wm.walkBoxIndex(p)
+	if id != InvalidWalkBox {
+		return wm.walkBoxes[id], include
+	}
+
+	return nil, false
 }
 
 // closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
