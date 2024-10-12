@@ -187,8 +187,8 @@ func Standing(dir Direction) *Action {
 				costume = CostumeSpeak(dir)
 			}
 			if cos := a.costume; cos != nil {
-				w, _ := a.Room.wbmatrix.walkBoxAt(a.pos)
-				cos.draw(costume, a.costumePos(), w.Scale())
+				scale := a.Room.GetScaleAtPosition(a.pos.ToPos())
+				cos.draw(costume, a.costumePos(), scale)
 			}
 		},
 	}
@@ -239,8 +239,8 @@ func SpeakingTo(dialog Future) *Action {
 		prom: NewPromise(),
 		f: func(f *Frame, a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
-				w, _ := a.Room.wbmatrix.walkBoxAt(a.pos)
-				cos.draw(CostumeSpeak(a.lookAt), a.costumePos(), w.Scale())
+				scale := a.Room.GetScaleAtPosition(a.pos.ToPos())
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos(), scale)
 			}
 			if dialog.IsCompleted() {
 				done.Complete()

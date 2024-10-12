@@ -124,6 +124,15 @@ func (r *Room) PutActor(actor *Actor) {
 	r.actors = append(r.actors, actor)
 }
 
+// GetScaleAtPosition returns the scale at the specified position within the room.
+func (r *Room) GetScaleAtPosition(p Position) float32 {
+	w, _ := r.wbmatrix.walkBoxAt(p.ToPosf())
+	if w != nil {
+		return w.Scale()
+	}
+	return DefaultScale
+}
+
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
 	CallReceiver() ScriptCallReceiver

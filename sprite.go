@@ -50,7 +50,7 @@ func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, scale float32, fli
 	}
 
 	origin := Position{
-		X: 0, //TODO
+		X: 0, //TODO: with lower scales sprites are rendered on the left side
 		Y: 0,
 	}
 
