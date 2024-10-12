@@ -156,6 +156,8 @@ const (
 	infinityDistance = 255
 	// InvalidWalkBox indicates an invalid WalkBox ID, typically used to signify non-existence.
 	InvalidWalkBox = -1
+	// MaxScaleDifference represents the maximum scale difference allowed between two points.
+	MaxScaleDifference = 0.03
 )
 
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
@@ -247,21 +249,64 @@ func (wm *WalkBoxMatrix) FindPath(from, to Position) []*WayPoint {
 	tof := to.ToPosf()
 	current, _ := wm.walkBoxIndex(fromf)
 	target, _ := wm.walkBoxIndex(tof)
+	currentWp := &WayPoint{Walkbox: wm.walkBoxes[current], Position: from}
 
-	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: from})
+	path = append(path, currentWp)
 	for current != target {
 		next := wm.nextWalkBox(current, target)
 		if next == InvalidWalkBox {
 			break
 		}
 		nextPosition := wm.closestPositionToWalkBox(fromf, next)
-		path = append(path, &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition.ToPos()})
+		nextWp := &WayPoint{Walkbox: wm.walkBoxes[next], Position: nextPosition.ToPos()}
+		path = append(path, append(currentWp.interpolate(nextWp), nextWp)...)
 		current = next
+		currentWp = nextWp
 		fromf = nextPosition
 	}
 
 	path = append(path, &WayPoint{Walkbox: wm.walkBoxes[current], Position: wm.closestPositionOnWalkBox(current, tof).ToPos()})
 	return path
+}
+
+// interpolate generates intermediate waypoints between a starting and ending waypoint.
+// We need interpolate points if scale difference is higher.
+func (from *WayPoint) interpolate(to *WayPoint) []*WayPoint {
+	scaleDifference := math.Abs(float64(from.Walkbox.Scale()) - float64(to.Walkbox.Scale()))
+	num := int(math.Ceil(scaleDifference / MaxScaleDifference))
+
+	if num < 2 {
+		return []*WayPoint{}
+	}
+
+	wayPoints := []*WayPoint{}
+
+	deltaX := to.Position.X - from.Position.X
+	deltaY := to.Position.Y - from.Position.Y
+	deltaScale := scaleDifference / float64((num))
+
+	for i := 1; i < num; i++ {
+		t := float32(i) / float32(num)
+		interpPos := Positionf{
+			X: float32(from.Position.X) + t*float32(deltaX),
+			Y: float32(from.Position.Y) + t*float32(deltaY),
+		}
+		interpScale := from.Walkbox.Scale()
+		if from.Walkbox.Scale() > to.Walkbox.Scale() {
+			interpScale -= float32(i) * float32(deltaScale)
+		} else {
+			interpScale += float32(i) * float32(deltaScale)
+		}
+
+		clonedWalkBox := *from.Walkbox // copy
+		clonedWalkBox.scale = interpScale
+		wayPoints = append(wayPoints, &WayPoint{
+			Walkbox:  &clonedWalkBox,
+			Position: interpPos.ToPos(),
+		})
+	}
+
+	return wayPoints
 }
 
 // nextWalkBox returns the next walk box in the path from the source to the destination.

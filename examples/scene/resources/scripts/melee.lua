@@ -29,7 +29,7 @@ export {
                     pos {x=230, y=100}, 
                     pos {x=100, y=100},
                 }, 
-                scale = 0.95,
+                scale = 0.8,
             },
 	        box2 = walkbox {
                 vertices = { 
@@ -38,7 +38,7 @@ export {
                     pos {x=215, y=90}, 
                     pos {x=115, y=90}
                 }, 
-                scale = 0.8,
+                scale = 0.6,
             },
 	        box3 = walkbox {
                 vertices = { 
@@ -47,7 +47,7 @@ export {
                     pos {x=197, y=82}, 
                     pos {x=128, y=82},
                 }, 
-                scale = 0.6,
+                scale = 0.4,
             },
 	        box4 = walkbox {
                 vertices = {
@@ -83,7 +83,7 @@ export {
 }
 
 function melee:enter()
-    local skipintro = false
+    local skipintro = true
 
     pirates:show {
         pos = pos {x=38, y=137},         

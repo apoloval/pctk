@@ -35,17 +35,22 @@ func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, scale float32, fli
 		},
 		Size: s.frameSize,
 	}
+	scaledWidth := int(float32(s.frameSize.W) * scale)
+	scaledHeight := int(float32(s.frameSize.H) * scale)
+
 	dest := Rectangle{
-		Pos: pos,
+		Pos: Position{
+			X: pos.X,
+			Y: pos.Y - (scaledHeight - s.frameSize.H),
+		},
 		Size: Size{
-			int(float32(s.frameSize.W) /** scale*/),
-			int(float32(s.frameSize.H) /** scale*/),
+			scaledWidth,
+			scaledHeight,
 		},
 	}
 
-	// TODO: calculate origin based on scale
 	origin := Position{
-		X: 0,
+		X: -scaledWidth,
 		Y: 0,
 	}
 
