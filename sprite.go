@@ -50,7 +50,7 @@ func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, scale float32, fli
 	}
 
 	origin := Position{
-		X: -scaledWidth,
+		X: 0, //TODO
 		Y: 0,
 	}
 
