@@ -157,7 +157,7 @@ const (
 	// InvalidWalkBox indicates an invalid WalkBox ID, typically used to signify non-existence.
 	InvalidWalkBox = -1
 	// MaxScaleDifference represents the maximum scale difference allowed between two points.
-	MaxScaleDifference = 0.03
+	MaxScaleDifference = 0.04
 )
 
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
