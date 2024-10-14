@@ -101,16 +101,8 @@ type ActionSentence struct {
 }
 
 // Init initializes the action sentence.
-func (s *ActionSentence) Init(app *App, vp *Viewport) {
+func (s *ActionSentence) Init(app *App) {
 	s.app = app
-	vp.SubscribeEventHandler(func(e ViewportEvent) {
-		switch e.Type {
-		case ViewportEventLeftClick:
-			s.ProcessLeftClick(e.Pos, e.Item)
-		case ViewportEventRightClick:
-			s.ProcessRightClick(s.app, e.Pos, e.Item)
-		}
-	})
 	s.Reset(VerbWalkTo)
 }
 
@@ -466,14 +458,21 @@ func (p *ControlPane) Init(app *App, cam Camera, vp *Viewport) {
 		{Verb: VerbTurnOn, Row: 2, Col: 2},
 		{Verb: VerbTurnOff, Row: 3, Col: 2},
 	}
-	p.action.Init(app, vp)
+	p.action.Init(app)
 	p.inventory.Init()
 	vp.SubscribeEventHandler(func(e ViewportEvent) {
+		if p.Mode != ControlPaneNormal {
+			return
+		}
 		switch e.Type {
 		case ViewportEventMouseEnter:
 			p.hover = e.Item
 		case ViewportEventMouseLeave:
 			p.hover = nil
+		case ViewportEventLeftClick:
+			p.action.ProcessLeftClick(e.Pos, e.Item)
+		case ViewportEventRightClick:
+			p.action.ProcessRightClick(app, e.Pos, e.Item)
 		}
 	})
 }
