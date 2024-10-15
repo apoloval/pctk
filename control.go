@@ -243,24 +243,17 @@ func (s *ActionSentence) interactWith(verb Verb, item, other RoomItem) {
 	s.args[0] = item
 	s.args[1] = other
 
-	var cmd Command
-	if verb == VerbWalkTo {
-		if item.ItemOwner() != nil {
-			// Cannot walk to an object in the inventory
-			s.Reset(VerbWalkTo)
-			return
-		}
-		cmd = ActorWalkToItem{
-			Actor: s.app.ego,
-			Item:  item,
-		}
-	} else {
-		cmd = ActorInteractWith{
-			Actor:   s.app.ego,
-			Targets: [2]RoomItem{item, other},
-			Verb:    verb,
-		}
+	if verb == VerbWalkTo && item.ItemOwner() != nil {
+		// Cannot walk to an object in the inventory
+		s.Reset(VerbWalkTo)
+		return
 	}
+	cmd := ActorInteractWith{
+		Actor:   s.app.ego,
+		Targets: [2]RoomItem{item, other},
+		Verb:    verb,
+	}
+
 	s.fut = s.app.RunCommandSequence(
 		cmd,
 		CommandFunc(func(app *App) (any, error) {

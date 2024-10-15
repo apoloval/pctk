@@ -143,6 +143,10 @@ function melee:enter()
     self:camfollow(guybrush)
 end
 
+function melee.bucket:walkto()
+    guybrush:say("I will not get closer")
+end
+
 function melee.bucket:lookat()
     if self.owner == guybrush then
         guybrush:say("It's a empty bucket.\nBut it's ALL MINE!")
