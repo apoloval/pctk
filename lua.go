@@ -1186,7 +1186,7 @@ func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
 		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
 		_, err := app.RunCommand(EnableWalkBox(w, false)).Wait()
 		if err != nil {
-			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
+			lua.Errorf(l.State, "error disabling walkbox: %s", err.Error())
 		}
 		return 0
 	})
