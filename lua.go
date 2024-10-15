@@ -1175,17 +1175,19 @@ func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "enable", func(l *LuaInterpreter) int {
-		var cmd EnableWalkBox
-		cmd.WalkBox = l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		cmd.Enabled = true
-		app.RunCommand(cmd)
+		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
+		_, err := app.RunCommand(EnableWalkBox(w, true)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
+		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "disable", func(l *LuaInterpreter) int {
-		var cmd EnableWalkBox
-		cmd.WalkBox = l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		cmd.Enabled = false
-		app.RunCommand(cmd)
+		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
+		_, err := app.RunCommand(EnableWalkBox(w, false)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
+		}
 		return 0
 	})
 }
