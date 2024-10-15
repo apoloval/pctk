@@ -1,7 +1,5 @@
 package pctk
 
-import "errors"
-
 // Object represents an object in the game. Objects are defined in the scope of rooms and generated
 // by the room scripts.
 type Object struct {
@@ -157,9 +155,6 @@ func (o *ObjectDefaults) CallFunction(function string, args []ScriptEntityValue)
 // SetObjectDefaults sets the default actions for objects. This method can be called only once. If
 // called again, it will return an error.
 func (a *App) SetObjectDefaults(def *ObjectDefaults) error {
-	if a.defaults != nil {
-		return errors.New("Defaults already set")
-	}
 	a.defaults = def
 	return nil
 }
