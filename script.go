@@ -247,6 +247,7 @@ func (a *App) LoadScript(ref ResourceRef) *Script {
 		if script == nil {
 			log.Panicf("Script not found: %s", ref)
 		}
+		a.scripts[ref] = script
 		script.Run(a)
 	}
 	return script
