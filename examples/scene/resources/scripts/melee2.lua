@@ -1,5 +1,5 @@
 common = import("resources:scripts/common")
-melee2 = import("resources:scripts/melee2")
+melee = import("resources:scripts/melee")
 
 guybrush = common.guybrush
 pirates = actor {
