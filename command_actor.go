@@ -114,12 +114,6 @@ type ActorInteractWith struct {
 }
 
 func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
-	if cmd.Verb == VerbWalkTo {
-		// This is not an interaction, but a movement command. This should be unreachable.
-		done.CompleteWithErrorf("invalid verb %s for actor interaction", cmd.Verb)
-		return
-	}
-
 	var completed Future
 	var args []ScriptEntityValue
 	other := cmd.Targets[1]
