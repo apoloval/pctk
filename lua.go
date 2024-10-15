@@ -955,6 +955,7 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 					l.WithEachTableItem(-1, func(k string) {
 						wb := l.CheckEntity(-1, ScriptEntityWalkBox).(*WalkBox)
 						wb.walkBoxID = k
+						wb.room = room
 						walkboxes = append(walkboxes, wb)
 					})
 					matrix := NewWalkBoxMatrix(walkboxes)
@@ -1145,7 +1146,7 @@ func (l *LuaInterpreter) DeclareUtilityFunctions(app *App) {
 }
 
 // DeclareWalkBoxType declares the type of a Walkbox in the Lua interpreter.
-func (l *LuaInterpreter) DeclareWalkBoxType() {
+func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
 	l.DeclarePositionType()
 	if l.DeclareEntityType(ScriptEntityWalkBox) {
 		return
@@ -1166,8 +1167,28 @@ func (l *LuaInterpreter) DeclareWalkBoxType() {
 		})
 
 		walkbox := NewWalkBox("", vertices, float32(scale))
+
+		l.WithOptionalField(1, "enabled", func() {
+			walkbox.enabled = l.State.ToBoolean(-1)
+		})
 		l.PushEntity(ScriptEntityWalkBox, walkbox)
 		return 1
+	})
+	l.DeclareEntityMethod(ScriptEntityWalkBox, "enable", func(l *LuaInterpreter) int {
+		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
+		_, err := app.RunCommand(EnableWalkBox(w)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
+		}
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityWalkBox, "disable", func(l *LuaInterpreter) int {
+		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
+		_, err := app.RunCommand(DisableWalkBox(w)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error disabling walkbox: %s", err.Error())
+		}
+		return 0
 	})
 }
 

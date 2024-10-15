@@ -13,6 +13,7 @@ type WalkBox struct {
 	enabled   bool
 	vertices  [4]Positionf
 	scale     float32
+	room      *Room
 }
 
 // NewWalkBox creates a new WalkBox with the given ID and vertices.
@@ -170,7 +171,9 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 // WalkBoxes draw walkable boxes of the WalkBoxMatrix.
 func (wm *WalkBoxMatrix) Draw() {
 	for _, wb := range wm.walkBoxes {
-		wb.draw()
+		if wb.enabled {
+			wb.draw()
+		}
 	}
 }
 
@@ -219,10 +222,13 @@ func (wm *WalkBoxMatrix) resetItinerary() {
 }
 
 // EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
-func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
-	if id >= 0 && id < len(wm.walkBoxes) {
-		wm.walkBoxes[id].enabled = enabled
-		wm.resetItinerary()
+func (wm *WalkBoxMatrix) EnableWalkBox(id string, enabled bool) {
+	for _, w := range wm.walkBoxes {
+		if w.walkBoxID == id {
+			w.enabled = enabled
+			wm.resetItinerary()
+			break
+		}
 	}
 }
 
