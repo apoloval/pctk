@@ -48,6 +48,7 @@ export {
                     pos {x=128, y=82},
                 }, 
                 scale = 0.6,
+                enabled = false,
             },
 	        box4 = walkbox {
                 vertices = {
@@ -83,7 +84,8 @@ export {
 }
 
 function melee:enter()
-    local skipintro = false
+    local skipintro = true
+    melee.box4:disable()
 
     pirates:show {
         pos = pos {x=38, y=137},         
@@ -161,6 +163,8 @@ function melee.bucket:pickup()
     CONTROL:cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but..."):wait()
     guybrush:toinventory(self)
+    melee.box3:enable()
+    melee.box4:enable()
     CONTROL:cursoron()
 end
 
