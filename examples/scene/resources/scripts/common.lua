@@ -48,7 +48,7 @@ function DEFAULT.push()
 end
 
 function DEFAULT.talkto(what)
-    if what.__type == "actor" then
+    if what.type == "actor" then
         guybrush:say("It's not time for a chat.")
     else
         guybrush:say("I can't talk to that.")

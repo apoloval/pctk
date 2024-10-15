@@ -295,7 +295,11 @@ func (cmd ActorCall) Execute(app *App, done *Promise) {
 		if !errors.Is(err, ErrScriptFunctionUnknown) || app.defaults == nil {
 			return AlreadyFailed(err)
 		}
-		return app.defaults.CallFunction(cmd.Function, cmd.Args)
+		args := append([]ScriptEntityValue{{
+			Type:     ScriptEntityActor,
+			UserData: cmd.Actor,
+		}}, cmd.Args...)
+		return app.defaults.CallFunction(cmd.Function, args)
 	})
 	done.Bind(call)
 }

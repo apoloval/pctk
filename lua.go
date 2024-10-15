@@ -514,6 +514,12 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 	// Prototype is ready. Remove it from the stack.
 	l.Pop(1)
 
+	// Declare the getter to obtain the entity type.
+	l.DeclareEntityGetter(typ, "type", func(l *LuaInterpreter) int {
+		l.PushString(typ.String())
+		return 1
+	})
+
 	return false
 }
 
