@@ -718,9 +718,7 @@ func (l *LuaInterpreter) DeclareObjectDefaultsType(app *App, script *Script) {
 		defaults.Script = script
 		l.PushEntity(ScriptEntityObjectDefaults, defaults)
 		defaults.CallRecv = l.RegisterCallReceiver(-1)
-		if err := app.SetObjectDefaults(defaults); err != nil {
-			lua.Errorf(l.State, "error setting object defaults: %s", err.Error())
-		}
+		app.SetObjectDefaults(defaults)
 		return 1
 	})
 }
