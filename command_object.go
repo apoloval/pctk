@@ -1,16 +1,5 @@
 package pctk
 
-// ObjectDeclare is a command that will declare a new object with the given properties.
-type ObjectDeclare struct {
-	Room   *Room
-	Object *Object
-}
-
-func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
-	cmd.Room.DeclareObject(cmd.Object)
-	done.Complete()
-}
-
 // ObjectCall is a command that will execute a script function of an object.
 type ObjectCall struct {
 	Object   *Object
