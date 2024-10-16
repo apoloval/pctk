@@ -2,6 +2,8 @@ package pctk
 
 import (
 	"fmt"
+	"io"
+	"sync"
 	"time"
 
 	"github.com/Shopify/go-lua"
@@ -14,6 +16,7 @@ type LuaFunction func(*LuaInterpreter) int
 type LuaInterpreter struct {
 	*lua.State
 
+	mutex  sync.Mutex
 	app    *App
 	script *Script
 }
@@ -23,13 +26,25 @@ func NewLuaInterpreter(app *App, s *Script) *LuaInterpreter {
 	return &LuaInterpreter{State: lua.NewState(), app: app, script: s}
 }
 
-// WrapInterpreter wraps other lua.State into a LuaInterpreter.
-func (l *LuaInterpreter) WrapInterpreter(other *lua.State) *LuaInterpreter {
-	return &LuaInterpreter{State: other, app: l.app, script: l.script}
+// Execute the given code using the interpreter.
+func (l *LuaInterpreter) Execute(name string, input io.Reader) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if err := l.Load(input, "="+name, ""); err != nil {
+		return fmt.Errorf("error loading script '%s': %w", name, err)
+	}
+	if err := l.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
+		return fmt.Errorf("error running script '%s': %w", name, err)
+	}
+	return nil
 }
 
 // CallFunction calls a function the entity instance previously registed using RegisterInstance.
 func (l *LuaInterpreter) CallMethod(cb ScriptCallbackID, args []ScriptEntityValue) error {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
 	lua.NewMetaTable(l.State, "pctk.callbacks")
 	l.Field(-1, cb.String())
 	if l.IsNil(-1) {
@@ -43,7 +58,7 @@ func (l *LuaInterpreter) CallMethod(cb ScriptCallbackID, args []ScriptEntityValu
 		l.PushEntity(arg.Type, arg.UserData)
 	}
 	err := l.ProtectedCall(len(args)+1, 0, 0)
-	l.Pop(4)
+	l.Pop(2)
 	return err
 }
 
@@ -656,7 +671,12 @@ func (l *LuaInterpreter) DeclareFutureType() {
 	}
 	l.DeclareEntityMethod(ScriptEntityFuture, "wait", func(l *LuaInterpreter) int {
 		f := l.CheckEntity(1, ScriptEntityFuture).(Future)
+
+		// Liberate the mutex during the wait to allow other callbacks to be invoked.
+		l.mutex.Unlock()
 		f.Wait()
+		l.mutex.Lock()
+
 		return 0
 	})
 }
@@ -1141,7 +1161,12 @@ func (l *LuaInterpreter) DeclareSoundType() {
 func (l *LuaInterpreter) DeclareUtilityFunctions() {
 	l.PushFunction(func(l *LuaInterpreter) int {
 		millis := lua.CheckInteger(l.State, 1)
+
+		// Liberate the mutex during the sleep to allow other callbacks to be invoked.
+		l.mutex.Unlock()
 		time.Sleep(time.Duration(millis) * time.Millisecond)
+		l.mutex.Lock()
+
 		return 0
 	})
 	l.SetGlobal("sleep")
@@ -1211,8 +1236,8 @@ func (l *LuaInterpreter) EntityTypeOf(index int) ScriptEntityType {
 
 // PushFunction pushes a LuaFunction into the stack.
 func (l *LuaInterpreter) PushFunction(f LuaFunction) {
-	l.PushGoFunction(func(state *lua.State) int {
-		return f(l.WrapInterpreter(state))
+	l.PushGoFunction(func(_ *lua.State) int {
+		return f(l)
 	})
 }
 

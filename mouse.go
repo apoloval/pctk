@@ -27,7 +27,7 @@ func NewMouseCursor() *Mouse {
 // Draw renders the mouse cursor at the current position.
 func (m *Mouse) Draw(frame *Frame) {
 	pos := m.PositionRelative(frame.Camera)
-	if m.Enabled && rl.IsCursorOnScreen() {
+	if m.Enabled {
 		rl.DrawTexture(m.tx, int32(pos.X-7), int32(pos.Y-7), m.col)
 		m.col.R = max(0xAA, m.col.R+6)
 		m.col.G = max(0xAA, m.col.G+6)
@@ -62,6 +62,12 @@ func (m *Mouse) PositionAbsolute() Position {
 // PositionRelative returns the current mouse position relative to the camera.
 func (m *Mouse) PositionRelative(cam *Camera) Position {
 	return cam.ScreenToWorldPosition(m.PositionAbsolute())
+}
+
+// SetRelativePosition sets the mouse position relative to the camera.
+func (m *Mouse) SetRelativePosition(cam *Camera, pos Position) {
+	abs := cam.WorldToScreenPosition(pos)
+	rl.SetMousePosition(abs.X, abs.Y)
 }
 
 func mouseCursorData() []byte {

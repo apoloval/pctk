@@ -73,6 +73,7 @@ func (a *App) init() {
 	a.mouse = NewMouseCursor()
 	a.frame = NewFrame(a.mouse, a.debugEnabled)
 	a.cam = a.cam.WithZoom(float32(a.screenZoom))
+	a.mouse.SetRelativePosition(&a.cam, Position{X: ScreenWidth / 2, Y: ScreenHeight / 2})
 	a.viewport.Init(a.cam)
 	a.control.Init(a, a.cam, &a.viewport)
 }
