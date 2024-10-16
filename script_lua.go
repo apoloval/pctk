@@ -44,11 +44,7 @@ func (s *Script) luaRun() {
 	if s.lua == nil {
 		log.Panic("Script not initialized")
 	}
-	input := bytes.NewReader(s.Code)
-	if err := s.lua.Load(input, "="+s.ref.String(), ""); err != nil {
-		log.Fatalf("Error loading script '%s': %s", s.ref.String(), err.Error())
-	}
-	if err := s.lua.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
+	if err := s.lua.Execute(s.ref.String(), bytes.NewReader(s.Code)); err != nil {
 		log.Fatalf("Error running script '%s': %s", s.ref.String(), err.Error())
 	}
 }
