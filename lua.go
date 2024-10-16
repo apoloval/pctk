@@ -78,6 +78,17 @@ func (l *LuaInterpreter) CheckFieldInteger(index int, name string) (val int) {
 	return
 }
 
+// CheckFieldIntegersArray checks if the field of the table at index is an array of integer, and returns it.
+func (l *LuaInterpreter) CheckFieldIntegersArray(index int, name string) (values []int) {
+	l.Field(index, name)
+	l.PushNil()
+	for l.Next(-2) {
+		values = append(values, int(lua.CheckInteger(l.State, -1)))
+		l.Pop(1)
+	}
+	return
+}
+
 // CheckFieldEntity checks if the field of the table at index is an entity of the given type, and
 // returns it.
 func (l *LuaInterpreter) CheckFieldEntity(index int, name string, typ ScriptEntityType) (val any) {
@@ -231,6 +242,19 @@ func (l *LuaInterpreter) DeclareAnimType() {
 			1*time.Second,
 			l.CheckFieldInteger(1, "row"),
 			l.CheckFieldInteger(1, "col"),
+		)
+		l.PushEntity(ScriptEntityAnimation, anim)
+		return 1
+	})
+	l.DeclareEntityConstructor(ScriptEntityAnimation, "sequenceanim", func(l *LuaInterpreter) int {
+		anim := NewAnimation()
+		duration := l.CheckFieldInteger(1, "duration")
+		row := l.CheckFieldInteger(1, "row")
+		cols := l.CheckFieldIntegersArray(-1, "columns")
+		anim.AddFrames(
+			time.Duration(duration)*time.Millisecond,
+			row,
+			cols...,
 		)
 		l.PushEntity(ScriptEntityAnimation, anim)
 		return 1

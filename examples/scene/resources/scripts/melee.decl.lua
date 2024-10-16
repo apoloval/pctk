@@ -58,7 +58,10 @@ export {
             usedir = RIGHT,
             usepos = pos {x=240, y=120},
             default = state {
-                anim = fixedanim { row = 6, col = 5},
+                anim = sequenceanim { 
+                    duration = 100,
+                    row = 6, 
+                    columns = {5}},
             },
             pickup = state {},
             state = "default"
