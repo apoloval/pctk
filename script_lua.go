@@ -9,24 +9,24 @@ import (
 
 func (s *Script) luaInit(app *App) {
 	if s.lua == nil {
-		s.lua = NewLuaInterpreter()
+		s.lua = NewLuaInterpreter(app, s)
 		lua.BaseOpen(s.lua.State)
-		s.lua.DeclareActorType(app, s)
+		s.lua.DeclareActorType()
 		s.lua.DeclareColorType()
-		s.lua.DeclareControlType(app)
-		s.lua.DeclareUtilityFunctions(app)
+		s.lua.DeclareControlType()
+		s.lua.DeclareUtilityFunctions()
 		s.lua.DeclareDirectionType()
 		s.lua.DeclareFutureType()
-		s.lua.DeclareMusicType(app)
-		s.lua.DeclareObjectDefaultsType(app, s)
+		s.lua.DeclareMusicType()
+		s.lua.DeclareObjectDefaultsType()
 		s.lua.DeclareObjectType()
 		s.lua.DeclarePositionType()
 		s.lua.DeclareRectType()
-		s.lua.DeclareRoomType(app, s)
-		s.lua.DeclareSentenceChoiceType(app)
+		s.lua.DeclareRoomType()
+		s.lua.DeclareSentenceChoiceType()
 		s.lua.DeclareSizeType()
-		s.lua.DeclareSoundType(app)
-		s.lua.DeclareWalkBoxType(app)
+		s.lua.DeclareSoundType()
+		s.lua.DeclareWalkBoxType()
 
 		s.lua.DeclareExportFunction(func(exp ScriptNamedEntityValue) {
 			s.exports = append(s.exports, exp)
@@ -40,52 +40,27 @@ func (s *Script) luaInit(app *App) {
 	}
 }
 
-func (s *Script) luaRun(app *App) {
+func (s *Script) luaRun() {
 	if s.lua == nil {
 		log.Panic("Script not initialized")
 	}
 	input := bytes.NewReader(s.Code)
 	if err := s.lua.Load(input, "="+s.ref.String(), ""); err != nil {
-		log.Fatalf("Error loading script '%s': %s", s.ref, err.Error())
+		log.Fatalf("Error loading script '%s': %s", s.ref.String(), err.Error())
 	}
 	if err := s.lua.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
-		log.Fatalf("Error running script '%s': %s", s.ref, err.Error())
+		log.Fatalf("Error running script '%s': %s", s.ref.String(), err.Error())
 	}
 }
 
-func (s *Script) luaCallFunction(
-	recv ScriptCallReceiver,
-	function string,
-	args []ScriptEntityValue,
-) Future {
+func (s *Script) luaCallMethod(cb ScriptCallbackID, args []ScriptEntityValue) Future {
 	prom := NewPromise()
 	go func() {
 		if s.lua == nil {
 			log.Panic("Script not initialized")
 		}
 
-		err := s.lua.CallFunction(recv, function, args)
-		if err != nil {
-			prom.CompleteWithError(err)
-			return
-		}
-		prom.Complete()
-	}()
-	return prom
-}
-
-func (s *Script) luaCallMethod(
-	recv ScriptCallReceiver,
-	method string,
-	args []ScriptEntityValue,
-) Future {
-	prom := NewPromise()
-	go func() {
-		if s.lua == nil {
-			log.Panic("Script not initialized")
-		}
-
-		err := s.lua.CallMethod(recv, method, args)
+		err := s.lua.CallMethod(cb, args)
 		if err != nil {
 			prom.CompleteWithError(err)
 			return

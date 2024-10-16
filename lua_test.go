@@ -8,7 +8,7 @@ import (
 )
 
 func TestDeclareColorType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareColorType()
@@ -24,7 +24,7 @@ func TestDeclareColorType(t *testing.T) {
 }
 
 func TestDirectionType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareDirectionType()
@@ -39,7 +39,7 @@ func TestDirectionType(t *testing.T) {
 }
 
 func TestDeclareExportFunction(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareColorType()
@@ -65,7 +65,7 @@ func TestDeclareExportFunction(t *testing.T) {
 }
 
 func TestDeclareImportFunction(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareColorType()
@@ -102,7 +102,7 @@ func TestDeclareImportFunction(t *testing.T) {
 }
 
 func TestObjectType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareObjectType()
@@ -131,7 +131,7 @@ func TestObjectType(t *testing.T) {
 }
 
 func TestDeclarePositionType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclarePositionType()
@@ -145,7 +145,7 @@ func TestDeclarePositionType(t *testing.T) {
 }
 
 func TestDeclareReferenceType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareReferenceType()
@@ -159,10 +159,10 @@ func TestDeclareReferenceType(t *testing.T) {
 func TestDeclareRoomType(t *testing.T) {
 	// TODO
 	t.Skip("Fix the deadlock running app.init() --> rl.InitWindow(...)")
-	l := NewLuaInterpreter()
-	lua.BaseOpen(l.State)
 	app := New(NewResourceBundle())
-	l.DeclareRoomType(app, nil)
+	l := NewLuaInterpreter(app, nil)
+	lua.BaseOpen(l.State)
+	l.DeclareRoomType()
 
 	assert.NoError(t, lua.DoString(l.State, `
 		r = room { 
@@ -177,7 +177,7 @@ func TestDeclareRoomType(t *testing.T) {
 }
 
 func TestDeclareSizeType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	l.DeclareSizeType()
@@ -191,7 +191,7 @@ func TestDeclareSizeType(t *testing.T) {
 }
 
 func TestDeclareObjectType(t *testing.T) {
-	l := NewLuaInterpreter()
+	l := NewLuaInterpreter(nil, nil)
 	lua.BaseOpen(l.State)
 
 	type userData struct {
@@ -256,11 +256,11 @@ func TestDeclareObjectType(t *testing.T) {
 func TestDeclareWalkBoxType(t *testing.T) {
 	// TODO
 	t.Skip("Fix the deadlock running app.init() --> rl.InitWindow(...)")
-	l := NewLuaInterpreter()
-	lua.BaseOpen(l.State)
 	app := New(NewResourceBundle())
+	l := NewLuaInterpreter(app, nil)
+	lua.BaseOpen(l.State)
 
-	l.DeclareWalkBoxType(app)
+	l.DeclareWalkBoxType()
 
 	assert.NoError(t, lua.DoString(l.State, `
 		wb = walkbox {

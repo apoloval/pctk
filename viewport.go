@@ -71,7 +71,7 @@ func (v *Viewport) ProcessFrame(f *Frame) {
 	}
 	f.WithCamera(&v.camera, func(f *Frame) {
 		v.processFrameRoom(f)
-		v.processFrameDialogs(f)
+		v.processFrameDialogs()
 		v.processEvents(f)
 		v.updateCamera()
 		if f.DebugEnabled && f.MouseIn(v.Room.Rect()) {
@@ -106,7 +106,7 @@ func (v *Viewport) processFrameRoom(f *Frame) {
 	}
 }
 
-func (v *Viewport) processFrameDialogs(f *Frame) {
+func (v *Viewport) processFrameDialogs() {
 	dialogs := make([]Dialog, 0, len(v.dialogs))
 	for _, d := range v.dialogs {
 		d.Draw()

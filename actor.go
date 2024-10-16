@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -22,18 +23,17 @@ var (
 
 // Actor is an entity that represents a character in the game.
 type Actor struct {
-	CallRecv  ScriptCallReceiver // The call receiver for the actor
-	Costume   ResourceRef        // Reference to the costume of the actor
-	Elev      int                // Elevation of the actor
-	Name      string             // Name of the actor
-	Room      *Room              // The room where the actor is located
-	Script    *Script            // The script where this actor is defined.
-	Size      Size               // Size of the actor
-	TalkColor Color              // Color of the text when the actor talks
-	UsePos    Position           // Position where other actors interact with this actor
-	UseDir    Direction          // Direction where other actors interact with this actor
+	Costume   ResourceRef // Reference to the costume of the actor
+	Elev      int         // Elevation of the actor
+	Name      string      // Name of the actor
+	Room      *Room       // The room where the actor is located
+	Size      Size        // Size of the actor
+	TalkColor Color       // Color of the text when the actor talks
+	UsePos    Position    // Position where other actors interact with this actor
+	UseDir    Direction   // Direction where other actors interact with this actor
 
 	act       *Action
+	callbacks []*ScriptCallback
 	costume   *Costume
 	dialog    *Dialog
 	ego       bool
@@ -81,6 +81,17 @@ func (a *Actor) ItemClass() ObjectClass {
 	return ObjectClassPerson
 }
 
+// DeclareCallback declares a new callback for the actor.
+func (a *Actor) DeclareCallback(cb *ScriptCallback) error {
+	for _, c := range a.callbacks {
+		if c.Name == cb.Name {
+			return fmt.Errorf("callback '%s' already declared", cb.Name)
+		}
+	}
+	a.callbacks = append(a.callbacks, cb)
+	return nil
+}
+
 // DirectionTo returns the direction from the actor to the given position.
 func (a *Actor) DirectionTo(pos Position) Direction {
 	return a.pos.ToPos().DirectionTo(pos)
@@ -109,6 +120,16 @@ func (a *Actor) Draw(frame *Frame) {
 // Hotspot returns the hotspot of the actor.
 func (a *Actor) Hotspot() Rectangle {
 	return Rectangle{Pos: a.costumePos(), Size: a.Size}
+}
+
+// FindCallback returns the callback with the given name.
+func (a *Actor) FindCallback(name string) *ScriptCallback {
+	for _, cb := range a.callbacks {
+		if cb.Name == name {
+			return cb
+		}
+	}
+	return nil
 }
 
 // Inventory returns the inventory of the actor.
@@ -149,11 +170,6 @@ func (a *Actor) ItemOwner() *Actor {
 // ItemPosition returns the position of the actor.
 func (a *Actor) ItemPosition() Position {
 	return a.pos.ToPos()
-}
-
-// CallReceiver returns the call receiver for the actor.
-func (a *Actor) CallReceiver() ScriptCallReceiver {
-	return a.CallRecv
 }
 
 // ItemUsePosition returns the position where actors interact with the actor.

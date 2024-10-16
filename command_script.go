@@ -24,23 +24,6 @@ func (c ScriptRun) Execute(app *App, prom *Promise) {
 	prom.CompleteWithValue(c)
 }
 
-// ScriptCall is a command to call a script function.
-type ScriptCall struct {
-	ScriptRef ResourceRef
-	Receiver  ScriptCallReceiver
-	Method    string
-	Args      []ScriptEntityValue
-}
-
-func (c ScriptCall) Execute(app *App, prom *Promise) {
-	script, ok := app.scripts[c.ScriptRef]
-	if !ok {
-		log.Panicf("Script not found: %s", c.ScriptRef)
-	}
-
-	prom.Bind(script.CallMethod(c.Receiver, c.Method, c.Args))
-}
-
 // ScriptImport is a command to import a script.
 type ScriptImport struct {
 	ScriptRef ResourceRef

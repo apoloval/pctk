@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"slices"
 )
@@ -13,12 +14,11 @@ const RoomCameraSpeed = 2
 type Room struct {
 	Background ResourceRef // The reference to the background image
 
-	actors     []*Actor           // The actors in the room
-	background *Image             // The background image of the room
-	callrecv   ScriptCallReceiver // The call receiver for the room
-	objects    []*Object          // The objects declared in the room
-	script     *Script            // The script where this room is defined. Used to call the room functions.
-	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
+	actors     []*Actor          // The actors in the room
+	background *Image            // The background image of the room
+	callbacks  []*ScriptCallback // The callbacks declared in the room
+	objects    []*Object         // The objects declared in the room
+	wbmatrix   *WalkBoxMatrix    // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
 
 // NewRoom creates a new room with the given background image.
@@ -37,6 +37,17 @@ func (r *Room) Rect() Rectangle {
 		return Rectangle{}
 	}
 	return NewRect(0, 0, int(r.background.Width()), int(r.background.Height()))
+}
+
+// DeclareCallback declares a callback in the room.
+func (r *Room) DeclareCallback(cb *ScriptCallback) error {
+	for _, c := range r.callbacks {
+		if c.Name == cb.Name {
+			return fmt.Errorf("callback '%s' already declared", cb.Name)
+		}
+	}
+	r.callbacks = append(r.callbacks, cb)
+	return nil
 }
 
 // DeclareObject declares an object in the room.
@@ -70,6 +81,16 @@ func (r *Room) Draw(frame *Frame) {
 	if frame.DebugEnabled && r.wbmatrix != nil {
 		r.wbmatrix.Draw()
 	}
+}
+
+// FindCallback returns the callback with the given name, or nil if not found.
+func (r *Room) FindCallback(name string) *ScriptCallback {
+	for _, cb := range r.callbacks {
+		if cb.Name == name {
+			return cb
+		}
+	}
+	return nil
 }
 
 // Load the room resources.
@@ -126,7 +147,6 @@ func (r *Room) PutActor(actor *Actor) {
 
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
-	CallReceiver() ScriptCallReceiver
 	Caption() string
 	Draw(*Frame)
 	ItemClass() ObjectClass
@@ -152,25 +172,29 @@ func (a *App) StartRoom(room *Room) Future {
 	for _, r := range a.rooms {
 		if r == room {
 			if prev := a.viewport.Room; prev != nil {
-				job = RecoverWithValue(
-					prev.script.CallMethod(prev.callrecv, "exit", nil),
-					func(err error) any {
-						log.Printf("Failed to call room exit function: %v", err)
-						return nil
-					},
-				)
+				if cb := prev.FindCallback("exit"); cb != nil {
+					job = RecoverWithValue(
+						cb.Invoke(nil),
+						func(err error) any {
+							log.Printf("Failed to call room exit function: %v", err)
+							return nil
+						},
+					)
+				}
 			}
 			a.viewport.Room = room
 			room.Load(a.res)
-			job = Continue(job, func(a any) Future {
-				return RecoverWithValue(
-					room.script.CallMethod(room.callrecv, "enter", nil),
-					func(err error) any {
-						log.Printf("Failed to call room enter function: %v", err)
-						return nil
-					},
-				)
-			})
+			if cb := room.FindCallback("enter"); cb != nil {
+				job = Continue(job, func(a any) Future {
+					return RecoverWithValue(
+						cb.Invoke(nil),
+						func(err error) any {
+							log.Printf("Failed to call room enter function: %v", err)
+							return nil
+						},
+					)
+				})
+			}
 			return job
 		}
 	}
