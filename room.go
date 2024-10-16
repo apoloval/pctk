@@ -93,6 +93,27 @@ func (r *Room) FindCallback(name string) *ScriptCallback {
 	return nil
 }
 
+// GetScriptField returns the script field with the given name, or nil if not found.
+func (r *Room) GetScriptField(name string) *ScriptEntityValue {
+	for _, obj := range r.objects {
+		if obj.Name == name {
+			return &ScriptEntityValue{
+				Type:     ScriptEntityObject,
+				UserData: obj,
+			}
+		}
+	}
+	for _, wb := range r.wbmatrix.walkBoxes {
+		if wb.walkBoxID == name {
+			return &ScriptEntityValue{
+				Type:     ScriptEntityWalkBox,
+				UserData: wb,
+			}
+		}
+	}
+	return nil
+}
+
 // Load the room resources.
 func (r *Room) Load(res ResourceLoader) {
 	if r.background == nil {

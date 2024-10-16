@@ -398,7 +398,7 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 	// Configure the __index metamethod. This will be called when a field is not found in the
 	// entity. We have to look for methods and getters declared in the prototype.
 	l.PushFunction(func(l *LuaInterpreter) int {
-		lua.CheckType(l.State, 1, lua.TypeTable)
+		entity := l.CheckEntity(1, ScriptEntityAny)
 		key := lua.CheckString(l.State, 2)
 		if !l.MetaTable(1) {
 			lua.Errorf(l.State, "prototype __index called with a table without metatable")
@@ -419,6 +419,15 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 		l.Field(-1, key)
 		if l.IsFunction(-1) {
 			return 1
+		}
+
+		// Look for getters defined by the user type
+		if recv, ok := entity.(ScriptCustomGetter); ok {
+			val := recv.GetScriptField(key)
+			if val != nil {
+				l.PushEntity(val.Type, val.UserData)
+				return 1
+			}
 		}
 
 		// The field was not found.
@@ -933,7 +942,6 @@ func (l *LuaInterpreter) DeclareRoomType() {
 	l.DeclareEntityConstructor(ScriptEntityRoom, "room",
 		func(l *LuaInterpreter) int {
 			room := new(Room)
-			room.script = l.script
 			objects := make(map[string]*Object)
 			l.WithEachTableItem(1, func(key string) {
 				switch key {
@@ -967,22 +975,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 				lua.Errorf(l.State, "error declaring room: %s", err)
 			}
 
-			// Set the objects as fields of the room with the same key as they was declared in the
-			// constructor input.
 			l.PushEntity(ScriptEntityRoom, room)
-			for k, obj := range objects {
-				l.PushEntity(ScriptEntityObject, obj)
-				l.SetField(-2, k)
-			}
-
-			// Do the same for the walkboxes.
-			if room.wbmatrix != nil {
-				for _, wb := range room.wbmatrix.walkBoxes {
-					l.PushEntity(ScriptEntityWalkBox, wb)
-					l.SetField(-2, wb.walkBoxID)
-				}
-			}
-
 			return 1
 		},
 	)

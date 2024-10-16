@@ -108,14 +108,17 @@ type ScriptEntityHandler func(exp ScriptNamedEntityValue)
 // script.
 type ScriptImportHandler func(script ResourceRef, handler ScriptEntityHandler)
 
+// ScriptCallbackReceiver is an interface to receive script callbacks.
 type ScriptCallbackReceiver interface {
 	DeclareCallback(cb *ScriptCallback) error
 	FindCallback(name string) *ScriptCallback
 }
 
-// ScriptDeclareCallbackHandler is a function that can be called from Lua using the interpreter to
-// declare a callback function.
-type ScriptDeclareCallbackHandler func(name string, entity ScriptEntityValue) error
+// ScriptCustomGetter is an interface to get custom values from a script. User values that implement
+// this interface can expose other user values to the script through getters.
+type ScriptCustomGetter interface {
+	GetScriptField(name string) *ScriptEntityValue
+}
 
 // ScriptCallbackID is the identifier of a callback function in a script.
 type ScriptCallbackID string
@@ -243,7 +246,7 @@ func (a *App) LoadScript(ref ResourceRef) *Script {
 	if !ok {
 		script = a.res.LoadScript(ref)
 		if script == nil {
-			log.Panicf("Script not found: %s", ref)
+			log.Panicf("Script not found: %s", ref.String())
 		}
 		a.scripts[ref] = script
 		script.Run(a)
