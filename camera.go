@@ -26,6 +26,10 @@ func (c Camera) ScreenToWorldPosition(pos Position) Position {
 	return positionFromRaylib(rl.GetScreenToWorld2D(pos.toRaylib(), c.raw))
 }
 
+func (c Camera) WorldToScreenPosition(pos Position) Position {
+	return positionFromRaylib(rl.GetWorldToScreen2D(pos.toRaylib(), c.raw))
+}
+
 func (c Camera) Action(act func()) {
 	rl.BeginMode2D(c.raw)
 	act()
