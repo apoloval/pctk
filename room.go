@@ -14,20 +14,17 @@ const RoomCameraSpeed = 2
 type Room struct {
 	Background ResourceRef // The reference to the background image
 
-	actors     []*Actor          // The actors in the room
-	background *Image            // The background image of the room
-	callbacks  []*ScriptCallback // The callbacks declared in the room
-	objects    []*Object         // The objects declared in the room
-	wbmatrix   *WalkBoxMatrix    // The wbmatrix defines the walkable areas within the room and their adjacency.
+	actors     []*Actor           // The actors in the room
+	background *Image             // The background image of the room
+	callbacks  []*ScriptCallback  // The callbacks declared in the room
+	objects    map[string]*Object // The objects declared in the room
+	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
 
-// NewRoom creates a new room with the given background image.
-func NewRoom(bg *Image) *Room {
-	if bg != nil && (bg.Width() < ScreenWidth || bg.Height() < ViewportHeight) {
-		log.Fatal("Background image is too small")
-	}
+// NewRoom creates a new room ready to be used.
+func NewRoom() *Room {
 	return &Room{
-		background: bg,
+		objects: make(map[string]*Object),
 	}
 }
 
@@ -51,9 +48,12 @@ func (r *Room) DeclareCallback(cb *ScriptCallback) error {
 }
 
 // DeclareObject declares an object in the room.
-func (r *Room) DeclareObject(obj *Object) {
+func (r *Room) DeclareObject(tag string, obj *Object) {
+	if _, found := r.objects[tag]; found {
+		log.Fatalf("Object already declared: %s", tag)
+	}
 	obj.Room = r
-	r.objects = append(r.objects, obj)
+	r.objects[tag] = obj
 }
 
 // DeclareWalkBoxMatrix declares walk box matrix for the room.
@@ -95,8 +95,8 @@ func (r *Room) FindCallback(name string) *ScriptCallback {
 
 // GetScriptField returns the script field with the given name, or nil if not found.
 func (r *Room) GetScriptField(name string) *ScriptEntityValue {
-	for _, obj := range r.objects {
-		if obj.Name == name {
+	for tag, obj := range r.objects {
+		if tag == name {
 			return &ScriptEntityValue{
 				Type:     ScriptEntityObject,
 				UserData: obj,

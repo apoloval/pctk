@@ -941,7 +941,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 	}
 	l.DeclareEntityConstructor(ScriptEntityRoom, "room",
 		func(l *LuaInterpreter) int {
-			room := new(Room)
+			room := NewRoom()
 			objects := make(map[string]*Object)
 			l.WithEachTableItem(1, func(key string) {
 				switch key {
@@ -961,7 +961,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 					switch l.EntityTypeOf(-1) {
 					case ScriptEntityObject:
 						obj := l.CheckEntity(-1, ScriptEntityObject).(*Object)
-						room.DeclareObject(obj)
+						room.DeclareObject(key, obj)
 						objects[key] = obj
 					default:
 						lua.ArgumentError(l.State, -1, fmt.Sprintf(
