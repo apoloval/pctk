@@ -58,7 +58,7 @@ func (l *LuaInterpreter) CallMethod(cb ScriptCallbackID, args []ScriptEntityValu
 		l.PushEntity(arg.Type, arg.UserData)
 	}
 	err := l.ProtectedCall(len(args)+1, 0, 0)
-	l.Pop(4)
+	l.Pop(2)
 	return err
 }
 
