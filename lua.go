@@ -250,7 +250,7 @@ func (l *LuaInterpreter) DeclareAnimType() {
 		anim := NewAnimation()
 		duration := l.CheckFieldInteger(1, "duration")
 		row := l.CheckFieldInteger(1, "row")
-		cols := l.CheckFieldIntegersArray(-1, "columns")
+		cols := l.CheckFieldIntegersArray(1, "columns")
 		anim.AddFrames(
 			time.Duration(duration)*time.Millisecond,
 			row,
