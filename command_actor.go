@@ -282,24 +282,14 @@ type ActorCall struct {
 }
 
 func (cmd ActorCall) Execute(app *App, done *Promise) {
-	if cmd.Actor.Script == nil {
-		done.CompleteWithErrorf("actor %s has no script", cmd.Actor.Caption())
+	cb := cmd.Actor.FindCallback(cmd.Function)
+	if cb != nil {
+		done.Bind(cb.Invoke(cmd.Args))
 		return
 	}
-	call := cmd.Actor.Script.CallMethod(
-		cmd.Actor.CallRecv,
-		cmd.Function,
-		cmd.Args,
-	)
-	call = Recover(call, func(err error) Future {
-		if !errors.Is(err, ErrScriptFunctionUnknown) || app.defaults == nil {
-			return AlreadyFailed(err)
-		}
-		args := append([]ScriptEntityValue{{
-			Type:     ScriptEntityActor,
-			UserData: cmd.Actor,
-		}}, cmd.Args...)
-		return app.defaults.CallFunction(cmd.Function, args)
-	})
-	done.Bind(call)
+	args := append([]ScriptEntityValue{{
+		Type:     ScriptEntityActor,
+		UserData: cmd.Actor,
+	}}, cmd.Args...)
+	done.Bind(app.defaults.CallFunction(cmd.Function, args))
 }

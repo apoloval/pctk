@@ -1,24 +1,27 @@
 package pctk
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Object represents an object in the game. Objects are defined in the scope of rooms and generated
 // by the room scripts.
 type Object struct {
-	CallRecv ScriptCallReceiver      // The script call receiver of the object
-	Class    ObjectClass             // The classes the object belongs to as OR-ed bit flags
-	Hotspot  Rectangle               // The hotspot of the object (for mouse interaction)
-	Name     string                  // The name of the object as seen by the player
-	Owner    *Actor                  // The actor that owns the object, or nil if not picked up
-	Pos      Position                // The position of the object in its room (for rendering)
-	Room     *Room                   // The room where the object is declared, and where actions code resides
-	Sprites  ResourceRef             // The reference to the sprites of the object
-	State    string                  // The current state of the object
-	States   map[string]*ObjectState // The states the object can be in
-	UseDir   Direction               // The direction the actor when using the object
-	UsePos   Position                // The position the actor was when using the object
+	Class   ObjectClass             // The classes the object belongs to as OR-ed bit flags
+	Hotspot Rectangle               // The hotspot of the object (for mouse interaction)
+	Name    string                  // The name of the object as seen by the player
+	Owner   *Actor                  // The actor that owns the object, or nil if not picked up
+	Pos     Position                // The position of the object in its room (for rendering)
+	Room    *Room                   // The room where the object is declared, and where actions code resides
+	Sprites ResourceRef             // The reference to the sprites of the object
+	State   string                  // The current state of the object
+	States  map[string]*ObjectState // The states the object can be in
+	UseDir  Direction               // The direction the actor when using the object
+	UsePos  Position                // The position the actor was when using the object
 
-	sprites *SpriteSheet // The sprites of the object
+	callbacks []*ScriptCallback // The callbacks declared in the object
+	sprites   *SpriteSheet      // The sprites of the object
 }
 
 // NewObject creates a new object.
@@ -31,6 +34,27 @@ func NewObject() *Object {
 // Caption returns the name of the object.
 func (o *Object) Caption() string {
 	return o.Name
+}
+
+// DeclareCallback declares a callback in the object.
+func (o *Object) DeclareCallback(cb *ScriptCallback) error {
+	for _, c := range o.callbacks {
+		if c.Name == cb.Name {
+			return fmt.Errorf("callback '%s' already declared", cb.Name)
+		}
+	}
+	o.callbacks = append(o.callbacks, cb)
+	return nil
+}
+
+// FindCallback finds a callback in the object by name.
+func (o *Object) FindCallback(name string) *ScriptCallback {
+	for _, c := range o.callbacks {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }
 
 // ItemClass returns the class of the object.
@@ -77,11 +101,6 @@ func (o *Object) ItemOwner() *Actor {
 // ItemPosition returns the position of the object.
 func (o *Object) ItemPosition() Position {
 	return o.Pos
-}
-
-// CallReceiver returns the script call receiver of the object.
-func (o *Object) CallReceiver() ScriptCallReceiver {
-	return o.CallRecv
 }
 
 // ItemUsePosition returns the position where actors interact with the object.
@@ -145,13 +164,38 @@ func (c ObjectClass) IsNoneOf(head ObjectClass, tail ...ObjectClass) bool {
 
 // ObjectDefaults represents the script call receiver for default actions.
 type ObjectDefaults struct {
-	CallRecv ScriptCallReceiver
-	Script   *Script
+	callbacks []*ScriptCallback
 }
 
 // CallFunction calls a default function in the script with the given arguments.
 func (o *ObjectDefaults) CallFunction(function string, args []ScriptEntityValue) Future {
-	return o.Script.CallFunction(o.CallRecv, function, args)
+	cb := o.FindCallback(function)
+	if cb == nil {
+		return AlreadyFailed(fmt.Errorf("default callback '%s' not found", function))
+	}
+
+	return cb.Invoke(args)
+}
+
+// DeclareCallback declares a callback in the object defaults.
+func (o *ObjectDefaults) DeclareCallback(cb *ScriptCallback) error {
+	for _, c := range o.callbacks {
+		if c.Name == cb.Name {
+			return fmt.Errorf("callback '%s' already declared", cb.Name)
+		}
+	}
+	o.callbacks = append(o.callbacks, cb)
+	return nil
+}
+
+// FindCallback finds a callback in the object defaults by name.
+func (o *ObjectDefaults) FindCallback(name string) *ScriptCallback {
+	for _, c := range o.callbacks {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }
 
 // SetObjectDefaults sets the default actions for objects. This method can be called only once. If

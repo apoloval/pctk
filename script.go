@@ -1,7 +1,6 @@
 package pctk
 
 import (
-	"errors"
 	"io"
 	"log"
 	"sync"
@@ -9,13 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrEntityNotFound is the error returned when a function or method is unknown in a script.
-var ErrScriptFunctionUnknown = errors.New("script function unknown")
-
 // ScriptEntityType is the type of a user data entity in a script.
 type ScriptEntityType string
 
 const (
+	// ScriptEntityAny is the type of an entity that can be any type.
+	ScriptEntityAny ScriptEntityType = "any"
+
 	// ScriptEntityActor is the type of an Actor entity.
 	ScriptEntityActor ScriptEntityType = "actor"
 
@@ -109,17 +108,41 @@ type ScriptEntityHandler func(exp ScriptNamedEntityValue)
 // script.
 type ScriptImportHandler func(script ResourceRef, handler ScriptEntityHandler)
 
-// ScriptCallReceiver is the identifier of a script element that can receive function calls.
-type ScriptCallReceiver string
-
-// NewScriptCallReceiver creates a new script instance identifier.
-func NewScriptCallReceiver() ScriptCallReceiver {
-	return ScriptCallReceiver(uuid.New().String())
+// ScriptCallbackReceiver is an interface to receive script callbacks.
+type ScriptCallbackReceiver interface {
+	DeclareCallback(cb *ScriptCallback) error
+	FindCallback(name string) *ScriptCallback
 }
 
-// String returns the string representation of the script instance identifier.
-func (id ScriptCallReceiver) String() string {
+// ScriptCustomGetter is an interface to get custom values from a script. User values that implement
+// this interface can expose other user values to the script through getters.
+type ScriptCustomGetter interface {
+	GetScriptField(name string) *ScriptEntityValue
+}
+
+// ScriptCallbackID is the identifier of a callback function in a script.
+type ScriptCallbackID string
+
+// NewScriptCallbackID creates a new script callback identifier.
+func NewScriptCallbackID() ScriptCallbackID {
+	return ScriptCallbackID(uuid.New().String())
+}
+
+// String returns the string representation of the script callback identifier.
+func (id ScriptCallbackID) String() string {
 	return string(id)
+}
+
+// ScriptCallback represents a callback function in a script.
+type ScriptCallback struct {
+	ID     ScriptCallbackID // The identifier used to find it in the callbacks table
+	Name   string           // The name of the callback
+	Script *Script          // The script where the callback is declared
+}
+
+// Invoke calls the callback with the given arguments.
+func (c ScriptCallback) Invoke(args []ScriptEntityValue) Future {
+	return c.Script.CallMethod(c.ID, args)
 }
 
 // ScriptLanguage represents the language of a script.
@@ -153,36 +176,14 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 	}
 }
 
-// CallFunction calls a function in the script with the given arguments.
-func (s *Script) CallFunction(
-	recv ScriptCallReceiver,
-	function string,
-	args []ScriptEntityValue,
-) Future {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	switch s.Language {
-	case ScriptLua:
-		return s.luaCallFunction(recv, function, args)
-	default:
-		log.Panicf("Unknown script language: %0x", s.Language)
-		return nil
-	}
-}
-
 // CallMethod calls a method for a call receiver with the given arguments.
-func (s *Script) CallMethod(
-	recv ScriptCallReceiver,
-	method string,
-	args []ScriptEntityValue,
-) Future {
+func (s *Script) CallMethod(cb ScriptCallbackID, args []ScriptEntityValue) Future {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	switch s.Language {
 	case ScriptLua:
-		return s.luaCallMethod(recv, method, args)
+		return s.luaCallMethod(cb, args)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 		return nil
@@ -232,7 +233,7 @@ func (s *Script) Run(app *App) {
 	switch s.Language {
 	case ScriptLua:
 		s.luaInit(app)
-		s.luaRun(app)
+		s.luaRun()
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 	}
@@ -245,7 +246,7 @@ func (a *App) LoadScript(ref ResourceRef) *Script {
 	if !ok {
 		script = a.res.LoadScript(ref)
 		if script == nil {
-			log.Panicf("Script not found: %s", ref)
+			log.Panicf("Script not found: %s", ref.String())
 		}
 		a.scripts[ref] = script
 		script.Run(a)

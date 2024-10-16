@@ -13,74 +13,37 @@ type LuaFunction func(*LuaInterpreter) int
 // LuaInterpreter is a wrapper around the lua.State that provides convenience methods for pctk.
 type LuaInterpreter struct {
 	*lua.State
+
+	app    *App
+	script *Script
 }
 
 // NewLuaInterpreter creates a new LuaInterpreter.
-func NewLuaInterpreter() *LuaInterpreter {
-	return &LuaInterpreter{lua.NewState()}
+func NewLuaInterpreter(app *App, s *Script) *LuaInterpreter {
+	return &LuaInterpreter{State: lua.NewState(), app: app, script: s}
 }
 
-// WrapInterpreter wraps a lua.State into a LuaInterpreter.
-func WrapInterpreter(l *lua.State) *LuaInterpreter {
-	return &LuaInterpreter{l}
-}
-
-// CallFunction calls a function the entity instance previously registed using RegisterInstance.
-func (l *LuaInterpreter) CallFunction(
-	recv ScriptCallReceiver,
-	method string,
-	args []ScriptEntityValue,
-) error {
-	lua.NewMetaTable(l.State, "pctk.callreceivers")
-	l.Field(-1, recv.String())
-	if l.IsNil(-1) {
-		l.Pop(2)
-		return fmt.Errorf("call receiver '%s' not found during function '%s' call", recv, method)
-	}
-
-	l.PushString(method)
-	l.RawGet(-2)
-	if !l.IsFunction(-1) {
-		l.Pop(3)
-		return fmt.Errorf("function '%s' not found in call receiver '%s': %w",
-			method, recv, ErrScriptFunctionUnknown)
-	}
-
-	for _, arg := range args {
-		l.PushEntity(arg.Type, arg.UserData)
-	}
-	err := l.ProtectedCall(len(args), 0, 0)
-	l.Pop(2)
-	return err
+// WrapInterpreter wraps other lua.State into a LuaInterpreter.
+func (l *LuaInterpreter) WrapInterpreter(other *lua.State) *LuaInterpreter {
+	return &LuaInterpreter{State: other, app: l.app, script: l.script}
 }
 
 // CallFunction calls a function the entity instance previously registed using RegisterInstance.
-func (l *LuaInterpreter) CallMethod(
-	recv ScriptCallReceiver,
-	method string,
-	args []ScriptEntityValue,
-) error {
-	lua.NewMetaTable(l.State, "pctk.callreceivers")
-	l.Field(-1, recv.String())
+func (l *LuaInterpreter) CallMethod(cb ScriptCallbackID, args []ScriptEntityValue) error {
+	lua.NewMetaTable(l.State, "pctk.callbacks")
+	l.Field(-1, cb.String())
 	if l.IsNil(-1) {
 		l.Pop(2)
-		return fmt.Errorf("call receiver '%s' not found during method '%s' call: %w",
-			recv, method, ErrScriptFunctionUnknown)
+		return fmt.Errorf("callback  '%s' not found during method call", cb.String())
 	}
 
-	l.PushString(method)
-	l.RawGet(-2)
-	if !l.IsFunction(-1) {
-		l.Pop(3)
-		return fmt.Errorf("method '%s' not found in call receiver '%s': %w",
-			method, recv, ErrScriptFunctionUnknown)
-	}
-	l.PushValue(-2) // Push the call receiver as first argument
+	l.Field(-1, "callback")
+	l.Field(-2, "entity")
 	for _, arg := range args {
 		l.PushEntity(arg.Type, arg.UserData)
 	}
 	err := l.ProtectedCall(len(args)+1, 0, 0)
-	l.Pop(2)
+	l.Pop(4)
 	return err
 }
 
@@ -90,15 +53,16 @@ func (l *LuaInterpreter) CheckEntity(index int, typ ScriptEntityType) any {
 	if !l.IsTable(index) {
 		lua.ArgumentError(l.State, index, fmt.Sprintf("expected entity %s", typ))
 	}
-	if !l.MetaTable(index) {
-		lua.ArgumentError(l.State, index, fmt.Sprintf("expected entity %s", typ))
-	}
-
-	lua.MetaTableNamed(l.State, typ.RegistryName())
-	match := l.RawEqual(-1, -2)
-	l.Pop(2)
-	if !match {
-		lua.ArgumentError(l.State, index, fmt.Sprintf("expected entity %s", typ))
+	if typ != ScriptEntityAny {
+		if !l.MetaTable(index) {
+			lua.ArgumentError(l.State, index, fmt.Sprintf("expected entity %s", typ))
+		}
+		lua.MetaTableNamed(l.State, typ.RegistryName())
+		match := l.RawEqual(-1, -2)
+		if !match {
+			lua.ArgumentError(l.State, index, fmt.Sprintf("expected entity %s", typ))
+		}
+		l.Pop(2)
 	}
 
 	l.Field(index, "__userdata")
@@ -129,7 +93,7 @@ func (l *LuaInterpreter) CheckFieldString(index int, name string) (val string) {
 
 // DeclareActorType declares the type of an Actor in the Lua interpreter. The handle function is
 // called to declare the actor instances by the caller.
-func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
+func (l *LuaInterpreter) DeclareActorType() {
 	l.DeclareColorType()
 	l.DeclareDirectionType()
 	l.DeclareFutureType()
@@ -143,7 +107,6 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 	l.DeclareEntityConstructor(ScriptEntityActor, "actor",
 		func(l *LuaInterpreter) int {
 			actor := NewActor(l.CheckFieldString(1, "name"))
-			actor.Script = script
 			l.WithOptionalField(1, "costume", func() {
 				actor.Costume = l.CheckEntity(-1, ScriptEntityRef).(ResourceRef)
 			})
@@ -160,13 +123,12 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 				actor.UseDir = l.CheckEntity(-1, ScriptEntityDir).(Direction)
 			})
 
-			err := app.DeclareActor(actor)
+			err := l.app.DeclareActor(actor)
 			if err != nil {
 				lua.Errorf(l.State, "error declaring actor: %s", err)
 			}
 
 			l.PushEntity(ScriptEntityActor, actor)
-			actor.CallRecv = l.RegisterCallReceiver(-1)
 			return 1
 		},
 	)
@@ -194,7 +156,7 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 		var cmd ActorStand
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Direction = l.CheckEntity(2, ScriptEntityDir).(Direction)
-		app.RunCommand(cmd).Wait()
+		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "say", func(l *LuaInterpreter) int {
@@ -204,14 +166,14 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 		l.WithOptionalField(3, "color", func() {
 			cmd.Color = l.CheckEntity(-1, ScriptEntityColor).(Color)
 		})
-		done := app.RunCommand(cmd)
+		done := l.app.RunCommand(cmd)
 		l.PushEntity(ScriptEntityFuture, done)
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "select", func(l *LuaInterpreter) int {
 		var cmd ActorSelectEgo
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
-		app.RunCommand(cmd).Wait()
+		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "show", func(l *LuaInterpreter) int {
@@ -223,21 +185,21 @@ func (l *LuaInterpreter) DeclareActorType(app *App, script *Script) {
 		l.WithOptionalField(2, "lookat", func() {
 			cmd.LookAt = l.CheckEntity(-1, ScriptEntityDir).(Direction)
 		})
-		app.RunCommand(cmd).Wait()
+		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "toinventory", func(l *LuaInterpreter) int {
 		var cmd ActorAddToInventory
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Object = l.CheckEntity(2, ScriptEntityObject).(*Object)
-		app.RunCommand(cmd).Wait()
+		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "walkto", func(l *LuaInterpreter) int {
 		var cmd ActorWalkToPosition
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Position = l.CheckEntity(2, ScriptEntityPos).(Position)
-		done := app.RunCommand(cmd)
+		done := l.app.RunCommand(cmd)
 		l.PushEntity(ScriptEntityFuture, done)
 		return 1
 	})
@@ -355,40 +317,40 @@ func (l *LuaInterpreter) DeclareColorType() {
 }
 
 // DeclareControlType declares the type of a Control in the Lua interpreter.
-func (l *LuaInterpreter) DeclareControlType(app *App) {
+func (l *LuaInterpreter) DeclareControlType() {
 	if l.DeclareEntityType(ScriptEntityControl) {
 		return
 	}
 	l.DeclareEntityMethod(ScriptEntityControl, "cursoron", func(l *LuaInterpreter) int {
-		_, err := app.RunCommand(MouseCursorOn()).Wait()
+		_, err := l.app.RunCommand(MouseCursorOn()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling cursor: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "cursoroff", func(l *LuaInterpreter) int {
-		_, err := app.RunCommand(MouseCursorOff()).Wait()
+		_, err := l.app.RunCommand(MouseCursorOff()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling cursor: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "paneon", func(l *LuaInterpreter) int {
-		_, err := app.RunCommand(ControlPaneEnable()).Wait()
+		_, err := l.app.RunCommand(ControlPaneEnable()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling control panel: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "paneoff", func(l *LuaInterpreter) int {
-		_, err := app.RunCommand(ControlPaneDisable()).Wait()
+		_, err := l.app.RunCommand(ControlPaneDisable()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling control panel: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "sentencechoice", func(l *LuaInterpreter) int {
-		val, err := app.RunCommand(SentenceChoiceInit()).Wait()
+		val, err := l.app.RunCommand(SentenceChoiceInit()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error initializing sentence choice: %s", err.Error())
 		}
@@ -436,7 +398,7 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 	// Configure the __index metamethod. This will be called when a field is not found in the
 	// entity. We have to look for methods and getters declared in the prototype.
 	l.PushFunction(func(l *LuaInterpreter) int {
-		lua.CheckType(l.State, 1, lua.TypeTable)
+		entity := l.CheckEntity(1, ScriptEntityAny)
 		key := lua.CheckString(l.State, 2)
 		if !l.MetaTable(1) {
 			lua.Errorf(l.State, "prototype __index called with a table without metatable")
@@ -459,6 +421,15 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 			return 1
 		}
 
+		// Look for getters defined by the user type
+		if recv, ok := entity.(ScriptCustomGetter); ok {
+			val := recv.GetScriptField(key)
+			if val != nil {
+				l.PushEntity(val.Type, val.UserData)
+				return 1
+			}
+		}
+
 		// The field was not found.
 		lua.ArgumentError(l.State, 2, fmt.Sprintf(
 			"no getter or method '%s' declared for  entity type '%s'", key, typ))
@@ -469,7 +440,7 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 	// Configure the __newindex metamethod. This will be called when a new field is set in the
 	// entity. We have to look for setters declared in the prototype.
 	l.PushFunction(func(l *LuaInterpreter) int {
-		lua.CheckType(l.State, 1, lua.TypeTable)
+		entity := l.CheckEntity(1, ScriptEntityAny)
 		key := lua.CheckString(l.State, 2)
 		if !l.MetaTable(1) {
 			lua.Errorf(l.State, "prototype __newindex called with a table without metatable")
@@ -502,7 +473,30 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 		}
 		l.Pop(2)
 
-		// The field was not found. Create a new one.
+		l.PushValue(2) // key
+		l.PushValue(3) // value
+		l.RawSet(1)
+
+		// Look for a callback function
+		if recv, ok := entity.(ScriptCallbackReceiver); l.IsFunction(3) && ok {
+			l.PushValue(3)
+			err := recv.DeclareCallback(&ScriptCallback{
+				Name:   key,
+				Script: l.script,
+				ID:     l.RegisterCallback(1),
+			})
+			if err != nil {
+				lua.Errorf(l.State, "error registering callback '%s' of entity type '%s': %s",
+					key, typ, err.Error())
+			}
+			l.PushValue(2) // key
+			l.PushValue(3) // value
+			l.RawSet(1)
+			return 0
+		}
+
+		// Something unknown. It might be a field set by some entity type (e.g., rooms setting their
+		// walkboxes as fields, objects setting their states, etc).
 		l.PushValue(2) // key
 		l.PushValue(3) // value
 		l.RawSet(1)
@@ -678,7 +672,7 @@ func (l *LuaInterpreter) DeclareImportFunction(handler ScriptImportHandler) {
 }
 
 // DeclareMusicType declares the type of a Music in the Lua interpreter.
-func (l *LuaInterpreter) DeclareMusicType(app *App) {
+func (l *LuaInterpreter) DeclareMusicType() {
 	if l.DeclareEntityType(ScriptEntityMusic) {
 		return
 	}
@@ -700,7 +694,7 @@ func (l *LuaInterpreter) DeclareMusicType(app *App) {
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityMusic, "play", func(l *LuaInterpreter) int {
-		app.RunCommand(MusicPlay{
+		l.app.RunCommand(MusicPlay{
 			Music: l.CheckEntity(1, ScriptEntityMusic).(*Music),
 		})
 		return 0
@@ -709,22 +703,20 @@ func (l *LuaInterpreter) DeclareMusicType(app *App) {
 		// TODO: music stopped from the music entity is odd. In fact, everything about music
 		// is really odd. Music should be a member of room and sound as long as the room is active.
 		// And stop music should be a command to the room.
-		app.RunCommand(MusicStop{})
+		l.app.RunCommand(MusicStop{})
 		return 0
 	})
 }
 
 // DeclareObjectDefaultsType declares the type of an ObjectDefaults in the Lua interpreter.
-func (l *LuaInterpreter) DeclareObjectDefaultsType(app *App, script *Script) {
+func (l *LuaInterpreter) DeclareObjectDefaultsType() {
 	if l.DeclareEntityType(ScriptEntityObjectDefaults) {
 		return
 	}
 	l.DeclareEntityConstructor(ScriptEntityObjectDefaults, "defaults", func(l *LuaInterpreter) int {
 		defaults := new(ObjectDefaults)
-		defaults.Script = script
 		l.PushEntity(ScriptEntityObjectDefaults, defaults)
-		defaults.CallRecv = l.RegisterCallReceiver(-1)
-		if err := app.SetObjectDefaults(defaults); err != nil {
+		if err := l.app.SetObjectDefaults(defaults); err != nil {
 			lua.Errorf(l.State, "error setting object defaults: %s", err.Error())
 		}
 		return 1
@@ -939,7 +931,7 @@ func (l *LuaInterpreter) DeclareReferenceType() {
 }
 
 // DeclareRoomType declares the type of a Room in the Lua interpreter.
-func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
+func (l *LuaInterpreter) DeclareRoomType() {
 	l.DeclareClassType()
 	l.DeclareObjectType()
 	l.DeclareReferenceType()
@@ -950,7 +942,6 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 	l.DeclareEntityConstructor(ScriptEntityRoom, "room",
 		func(l *LuaInterpreter) int {
 			room := new(Room)
-			room.script = script
 			objects := make(map[string]*Object)
 			l.WithEachTableItem(1, func(key string) {
 				switch key {
@@ -979,31 +970,12 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 				}
 			})
 
-			err := app.DeclareRoom(room)
+			err := l.app.DeclareRoom(room)
 			if err != nil {
 				lua.Errorf(l.State, "error declaring room: %s", err)
 			}
 
-			// Set the objects as fields of the room with the same key as they was declared in the
-			// constructor input.
 			l.PushEntity(ScriptEntityRoom, room)
-			for k, obj := range objects {
-				l.PushEntity(ScriptEntityObject, obj)
-				obj.CallRecv = l.RegisterCallReceiver(-1)
-				l.SetField(-2, k)
-			}
-
-			// Do the same for the walkboxes.
-			if room.wbmatrix != nil {
-				for _, wb := range room.wbmatrix.walkBoxes {
-					l.PushEntity(ScriptEntityWalkBox, wb)
-					l.SetField(-2, wb.walkBoxID)
-				}
-			}
-
-			// Declare the room as call receiver.
-			room.callrecv = l.RegisterCallReceiver(-1)
-
 			return 1
 		},
 	)
@@ -1016,7 +988,7 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 		l.CheckEntity(1, ScriptEntityRoom)
 		actor := l.CheckEntity(2, ScriptEntityActor).(*Actor)
 		// TODO: hack obtaining viewport
-		_, err := app.RunCommand(RoomCameraFollowActor(&app.viewport, actor)).Wait()
+		_, err := l.app.RunCommand(RoomCameraFollowActor(&l.app.viewport, actor)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error making camera follow actor: %s", err.Error())
 		}
@@ -1026,14 +998,14 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 		l.CheckEntity(1, ScriptEntityRoom)
 		pos := lua.CheckInteger(l.State, 2)
 		// TODO: hack obtaining viewport
-		_, err := app.RunCommand(RoomCameraTo(&app.viewport, pos)).Wait()
+		_, err := l.app.RunCommand(RoomCameraTo(&l.app.viewport, pos)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error moving camera to position: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "show", func(l *LuaInterpreter) int {
-		app.RunCommand(RoomShow{
+		l.app.RunCommand(RoomShow{
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),
 		})
 		return 0
@@ -1041,14 +1013,14 @@ func (l *LuaInterpreter) DeclareRoomType(app *App, script *Script) {
 }
 
 // DeclareSentenceChoiceType declares the type of a SentenceChoice in the Lua interpreter.
-func (l *LuaInterpreter) DeclareSentenceChoiceType(app *App) {
+func (l *LuaInterpreter) DeclareSentenceChoiceType() {
 	if l.DeclareEntityType(ScriptEntitySentenceChoice) {
 		return
 	}
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "add", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
 		sentence := lua.CheckString(l.State, 2)
-		_, err := app.RunCommand(SentenceChoiceAdd(choice, sentence)).Wait()
+		_, err := l.app.RunCommand(SentenceChoiceAdd(choice, sentence)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error adding sentence to choice: %s", err.Error())
 		}
@@ -1056,7 +1028,7 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType(app *App) {
 	})
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "wait", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
-		ret, err := app.RunCommand(SentenceChoiceWait(choice, false)).Wait()
+		ret, err := l.app.RunCommand(SentenceChoiceWait(choice, false)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
 		}
@@ -1067,7 +1039,7 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType(app *App) {
 	})
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "waitsay", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
-		ret, err := app.RunCommand(SentenceChoiceWait(choice, true)).Wait()
+		ret, err := l.app.RunCommand(SentenceChoiceWait(choice, true)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
 		}
@@ -1108,7 +1080,7 @@ func (l *LuaInterpreter) DeclareSizeType() {
 }
 
 // DeclareSoundType declares the type of a Sound in the Lua interpreter.
-func (l *LuaInterpreter) DeclareSoundType(app *App) {
+func (l *LuaInterpreter) DeclareSoundType() {
 	l.DeclareReferenceType()
 
 	if l.DeclareEntityType(ScriptEntitySound) {
@@ -1131,18 +1103,18 @@ func (l *LuaInterpreter) DeclareSoundType(app *App) {
 	})
 	l.DeclareEntityMethod(ScriptEntitySound, "play", func(l *LuaInterpreter) int {
 		sound := l.CheckEntity(1, ScriptEntitySound).(*Sound)
-		app.RunCommand(SoundPlay{Sound: sound})
+		l.app.RunCommand(SoundPlay{Sound: sound})
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntitySound, "stop", func(l *LuaInterpreter) int {
 		sound := l.CheckEntity(1, ScriptEntitySound).(*Sound)
-		app.RunCommand(SoundStop{Sound: sound})
+		l.app.RunCommand(SoundStop{Sound: sound})
 		return 0
 	})
 }
 
 // DeclareUtilityFunctions declares the utility functions in the Lua interpreter.
-func (l *LuaInterpreter) DeclareUtilityFunctions(app *App) {
+func (l *LuaInterpreter) DeclareUtilityFunctions() {
 	l.PushFunction(func(l *LuaInterpreter) int {
 		millis := lua.CheckInteger(l.State, 1)
 		time.Sleep(time.Duration(millis) * time.Millisecond)
@@ -1152,7 +1124,7 @@ func (l *LuaInterpreter) DeclareUtilityFunctions(app *App) {
 }
 
 // DeclareWalkBoxType declares the type of a Walkbox in the Lua interpreter.
-func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
+func (l *LuaInterpreter) DeclareWalkBoxType() {
 	l.DeclarePositionType()
 	if l.DeclareEntityType(ScriptEntityWalkBox) {
 		return
@@ -1182,7 +1154,7 @@ func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "enable", func(l *LuaInterpreter) int {
 		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		_, err := app.RunCommand(EnableWalkBox(w)).Wait()
+		_, err := l.app.RunCommand(EnableWalkBox(w)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
 		}
@@ -1190,7 +1162,7 @@ func (l *LuaInterpreter) DeclareWalkBoxType(app *App) {
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "disable", func(l *LuaInterpreter) int {
 		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		_, err := app.RunCommand(DisableWalkBox(w)).Wait()
+		_, err := l.app.RunCommand(DisableWalkBox(w)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling walkbox: %s", err.Error())
 		}
@@ -1216,7 +1188,7 @@ func (l *LuaInterpreter) EntityTypeOf(index int) ScriptEntityType {
 // PushFunction pushes a LuaFunction into the stack.
 func (l *LuaInterpreter) PushFunction(f LuaFunction) {
 	l.PushGoFunction(func(state *lua.State) int {
-		return f(WrapInterpreter(state))
+		return f(l.WrapInterpreter(state))
 	})
 }
 
@@ -1234,12 +1206,18 @@ func (l *LuaInterpreter) PushEntity(typ ScriptEntityType, obj any) {
 	l.SetMetaTable(-2)
 }
 
-// RegisterCallReceiver registers the entity at index as a call receiver.
-func (l *LuaInterpreter) RegisterCallReceiver(index int) (id ScriptCallReceiver) {
+// RegisterCallback registers a callback for the entity at index. The callback function is on top of
+// the stack. It returns the callback ID and pops the callback function from the stack.
+func (l *LuaInterpreter) RegisterCallback(index int) (id ScriptCallbackID) {
 	index = l.AbsIndex(index)
-	id = NewScriptCallReceiver()
-	lua.NewMetaTable(l.State, "pctk.callreceivers")
+	cb := l.Top()
+	id = NewScriptCallbackID()
+	lua.NewMetaTable(l.State, "pctk.callbacks")
+	l.NewTable()
 	l.PushValue(index)
+	l.SetField(-2, "entity")
+	l.PushValue(cb)
+	l.SetField(-2, "callback")
 	l.SetField(-2, id.String())
 	l.Pop(1)
 	return
