@@ -15,7 +15,7 @@ type Object struct {
 	Pos     Position                // The position of the object in its room (for rendering)
 	Room    *Room                   // The room where the object is declared, and where actions code resides
 	Sprites ResourceRef             // The reference to the sprites of the object
-	State   string                  // The current state of the object
+	State   *ObjectState            // The current state of the object
 	States  map[string]*ObjectState // The states the object can be in
 	UseDir  Direction               // The direction the actor when using the object
 	UsePos  Position                // The position the actor was when using the object
@@ -57,6 +57,14 @@ func (o *Object) FindCallback(name string) *ScriptCallback {
 	return nil
 }
 
+// GetScriptField returns the state of the object with the given name.
+func (o *Object) GetScriptField(name string) *ScriptEntityValue {
+	if state, ok := o.States[name]; ok {
+		return &ScriptEntityValue{Type: ScriptEntityState, UserData: state}
+	}
+	return nil
+}
+
 // ItemClass returns the class of the object.
 func (o *Object) ItemClass() ObjectClass {
 	return o.Class
@@ -64,7 +72,7 @@ func (o *Object) ItemClass() ObjectClass {
 
 // CurrentState returns the current state of the object.
 func (o *Object) CurrentState() *ObjectState {
-	return o.States[o.State]
+	return o.State
 }
 
 // Draw renders the object in the viewport.
@@ -110,7 +118,8 @@ func (o *Object) ItemUsePosition() (Position, Direction) {
 
 // ObjectState represents a state of an object.
 type ObjectState struct {
-	Anim *Animation // The animation while in this state.
+	Anim   *Animation // The animation while in this state.
+	Object *Object    // Object related to the state.
 }
 
 // ObjectClass represents a class of objects. Classes are aimed to be used as bit flags that can be
