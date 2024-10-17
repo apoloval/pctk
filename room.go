@@ -189,37 +189,11 @@ func (a *App) DeclareRoom(room *Room) error {
 
 // StartRoom starts the given room in the application.
 func (a *App) StartRoom(room *Room) Future {
-	var job Future
 	for _, r := range a.rooms {
 		if r == room {
-			if prev := a.viewport.Room; prev != nil {
-				if cb := prev.FindCallback("exit"); cb != nil {
-					job = RecoverWithValue(
-						cb.Invoke(nil),
-						func(err error) any {
-							log.Printf("Failed to call room exit function: %v", err)
-							return nil
-						},
-					)
-				}
-			}
-			a.viewport.Room = room
 			room.Load(a.res)
-			if cb := room.FindCallback("enter"); cb != nil {
-				job = Continue(job, func(a any) Future {
-					return RecoverWithValue(
-						cb.Invoke(nil),
-						func(err error) any {
-							log.Printf("Failed to call room enter function: %v", err)
-							return nil
-						},
-					)
-				})
-			}
-			return job
+			return a.viewport.ActivateRoom(room)
 		}
 	}
-	prom := NewPromise()
-	prom.CompleteWithErrorf("Room not declared")
-	return prom
+	return AlreadyFailed(errors.New("Room not declared"))
 }

@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"fmt"
+	"log"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -47,6 +48,46 @@ func (v *Viewport) Init(cam Camera) {
 // SubscribeEventHandler subscribes the given handler to the viewport events.
 func (v *Viewport) SubscribeEventHandler(handler ViewportEventHandler) {
 	v.handlers = append(v.handlers, handler)
+}
+
+// ActivateRoom sets the given room as the active room in the viewport. It will call the exit and
+// enter functions of the previous and new rooms, respectively, represented in the returned future.
+func (v *Viewport) ActivateRoom(room *Room) Future {
+	var job Future
+	if prev := v.Room; prev != nil {
+		if cb := prev.FindCallback("exit"); cb != nil {
+			job = RecoverWithValue(
+				cb.Invoke(nil),
+				func(err error) any {
+					log.Printf("Failed to call room exit function: %v", err)
+					return nil
+				},
+			)
+		}
+	}
+	job = Continue(job, func(a any) Future {
+		v.Room = room
+		v.CameraCancelMovement()
+		return AlreadySucceeded(nil)
+	})
+	if cb := room.FindCallback("enter"); cb != nil {
+		job = Continue(job, func(a any) Future {
+			return RecoverWithValue(
+				cb.Invoke(nil),
+				func(err error) any {
+					log.Printf("Failed to call room enter function: %v", err)
+					return nil
+				},
+			)
+		})
+	}
+	return job
+}
+
+// CameraCancelMovement cancels the camera movement.
+func (v *Viewport) CameraCancelMovement() {
+	v.follow = nil
+	v.camtarget = int(v.camera.Target().X)
 }
 
 // CameraFollowActor makes the camera follow the given actor.
