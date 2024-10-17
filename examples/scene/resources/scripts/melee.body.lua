@@ -94,7 +94,6 @@ end
 
 function melee.bucket:pickup()
     CONTROL:cursoroff()
-    melee.bucket.pickup:set()
     guybrush:say("I don't know how this could help\nme to find the keys, but..."):wait()
     guybrush:toinventory(self)
     melee.box3:enable()
