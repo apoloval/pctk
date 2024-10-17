@@ -30,9 +30,26 @@ func RoomCameraTo(vp *Viewport, pos int) CommandFunc {
 	}
 }
 
+// RoomCameraFollowActor is a command that will make the camera follow the given actor.
 func RoomCameraFollowActor(vp *Viewport, actor *Actor) CommandFunc {
 	return func(a *App) (any, error) {
 		vp.CameraFollowActor(actor)
+		return nil, nil
+	}
+}
+
+// RoomCameraOnLeftEdge is a command that will put the camera on the left edge of the room.
+func RoomCameraOnLeftEdge(vp *Viewport) CommandFunc {
+	return func(a *App) (any, error) {
+		vp.CameraOnLeftEdge()
+		return nil, nil
+	}
+}
+
+// RoomCameraOnRightEdge is a command that will put the camera on the right edge of the room.
+func RoomCameraOnRightEdge(vp *Viewport) CommandFunc {
+	return func(a *App) (any, error) {
+		vp.CameraOnRightEdge()
 		return nil, nil
 	}
 }
