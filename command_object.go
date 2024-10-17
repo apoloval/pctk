@@ -28,3 +28,19 @@ func ObjectSetState(st *ObjectState) CommandFunc {
 		return nil, nil
 	}
 }
+
+// ObjectEnableClass is a command that will enable a class of an object.
+func ObjectEnableClass(obj *Object, class ObjectClass) CommandFunc {
+	return func(a *App) (any, error) {
+		obj.EnableClass(class)
+		return nil, nil
+	}
+}
+
+// ObjectDisableClass is a command that will disable a class of an object.
+func ObjectDisableClass(obj *Object, class ObjectClass) CommandFunc {
+	return func(a *App) (any, error) {
+		obj.DisableClass(class)
+		return nil, nil
+	}
+}

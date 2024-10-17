@@ -300,6 +300,8 @@ func (l *LuaInterpreter) DeclareClassType() {
 	})
 	l.PushEntity(ScriptEntityClass, ObjectClassPerson)
 	l.SetGlobal("PERSON")
+	l.PushEntity(ScriptEntityClass, ObjectClassUntouchable)
+	l.SetGlobal("UNTOUCHABLE")
 	l.PushEntity(ScriptEntityClass, ObjectClassPickable)
 	l.SetGlobal("PICKABLE")
 	l.PushEntity(ScriptEntityClass, ObjectClassOpenable)
@@ -851,7 +853,18 @@ func (l *LuaInterpreter) DeclareObjectType() {
 		l.PushEntity(ScriptEntityPos, obj.Pos)
 		return 1
 	})
-
+	l.DeclareEntityMethod(ScriptEntityObject, "classon", func(l *LuaInterpreter) int {
+		obj := l.CheckEntity(1, ScriptEntityObject).(*Object)
+		class := l.CheckEntity(2, ScriptEntityClass).(ObjectClass)
+		l.app.RunCommand(ObjectEnableClass(obj, class)).Wait()
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityObject, "classoff", func(l *LuaInterpreter) int {
+		obj := l.CheckEntity(1, ScriptEntityObject).(*Object)
+		class := l.CheckEntity(2, ScriptEntityClass).(ObjectClass)
+		l.app.RunCommand(ObjectDisableClass(obj, class)).Wait()
+		return 0
+	})
 	l.DeclareEntityToString(ScriptEntityObject, func(l *LuaInterpreter) int {
 		obj := l.CheckEntity(1, ScriptEntityObject).(*Object)
 		l.PushString(fmt.Sprintf("object:(name=%s)", obj.Name))
