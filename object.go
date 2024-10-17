@@ -31,6 +31,16 @@ func NewObject() *Object {
 	}
 }
 
+// EnableClass enables a class in the object.
+func (o *Object) EnableClass(class ObjectClass) {
+	o.Class = o.Class.Enable(class)
+}
+
+// DisableClass disables a class in the object.
+func (o *Object) DisableClass(class ObjectClass) {
+	o.Class = o.Class.Disable(class)
+}
+
 // Caption returns the name of the object.
 func (o *Object) Caption() string {
 	return o.Name
@@ -88,7 +98,7 @@ func (o *Object) Draw(f *Frame) {
 
 // IsVisible returns true if the object is visible in the room, false otherwise.
 func (o *Object) IsVisible() bool {
-	return o.Owner == nil
+	return o.Owner == nil && !o.Class.Is(ObjectClassUntouchable)
 }
 
 // Load the object resources.
@@ -131,21 +141,25 @@ const (
 	// ObjectClassPerson is a built-in class that represents objects that are persons.
 	ObjectClassPerson ObjectClass = 1 << 0
 
+	// ObjectClassUntouchable is a built-in class that represents objects the player cannot interact
+	// with and will not be visible.
+	ObjectClassUntouchable ObjectClass = 1 << 1
+
 	// ObjectClassPickable is a built-in class that represents objects that can be picked up by the
 	// player.
-	ObjectClassPickable ObjectClass = 1 << 1
+	ObjectClassPickable ObjectClass = 1 << 2
 
 	// ObjectClassOpenable is a built-in class that represents objects that can be opened by the
 	// player.
-	ObjectClassOpenable ObjectClass = 1 << 2
+	ObjectClassOpenable ObjectClass = 1 << 3
 
 	// ObjectClassCloseable is a built-in class that represents objects that can be closed by the
 	// player.
-	ObjectClassCloseable ObjectClass = 1 << 3
+	ObjectClassCloseable ObjectClass = 1 << 4
 
 	// ObjectClassApplicable is a built-in class that represents objects that can be applied to
 	// other objects. This is what determines that "use" verb requires an object to be applied to.
-	ObjectClassApplicable ObjectClass = 1 << 4
+	ObjectClassApplicable ObjectClass = 1 << 5
 )
 
 // WithObjectClasses returns a new object class with the given classes.
@@ -154,6 +168,21 @@ func WithObjectClasses(head ObjectClass, tail ...ObjectClass) ObjectClass {
 		head |= class
 	}
 	return head
+}
+
+// Enable enables a class in the object class.
+func (c ObjectClass) Enable(class ObjectClass) ObjectClass {
+	return c | class
+}
+
+// Disable disables a class in the object class.
+func (c ObjectClass) Disable(class ObjectClass) ObjectClass {
+	return c &^ class
+}
+
+// Is returns true if the class is enabled in the object classes.
+func (c ObjectClass) Is(class ObjectClass) bool {
+	return c&class != 0
 }
 
 // IsOneOf returns true if some class of c is also present in other
