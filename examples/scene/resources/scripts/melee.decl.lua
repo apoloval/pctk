@@ -53,10 +53,10 @@ export {
             class = APPLICABLE,
             name = "bucket",
             sprites = ref("resources:sprites/objects"),
-            pos = pos {x=260, y=120},
-            hotspot = rect {x=250, y=100, w=20, h=20},
+            pos = pos {x=440, y=130},
+            hotspot = rect {x=430, y=110, w=20, h=20},
             usedir = RIGHT,
-            usepos = pos {x=240, y=120},
+            usepos = pos {x=420, y=130},
             default = state {
                 anim = sequenceanim { 
                     duration = 100,

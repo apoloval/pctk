@@ -19,12 +19,13 @@ var (
 
 // Dialog is a dialog that will be shown in the screen.
 type Dialog struct {
-	actor *Actor
-	text  string
-	pos   Position
-	color Color
-	speed float32
-	done  *Promise
+	actor  *Actor
+	bounds Rectangle
+	text   string
+	pos    Position
+	color  Color
+	speed  float32
+	done   *Promise
 }
 
 // NewDialog creates a new dialog with the given properties.
@@ -42,6 +43,11 @@ func NewDialog(actor *Actor, text string, pos Position, color Color, speed float
 		color: color,
 		speed: speed,
 	}
+}
+
+// SetBounds sets the bounds of the dialog.
+func (d *Dialog) SetBounds(bounds Rectangle) {
+	d.bounds = bounds
 }
 
 // Actor returns the actor that is speaking the dialog, or nil if it comes from a external voice.
@@ -77,5 +83,5 @@ func (d *Dialog) Draw() {
 	if d.done != nil && d.done.IsCompleted() {
 		return
 	}
-	DrawDialogText(d.text, d.pos, d.color)
+	DrawDialogText(d.text, d.pos, d.bounds, d.color)
 }

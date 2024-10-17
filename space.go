@@ -275,6 +275,31 @@ func NewRect(x, y, w, h int) Rectangle {
 	}
 }
 
+// IsZero returns true if the rectangle is empty.
+func (r Rectangle) IsZero() bool {
+	return r.Pos.X == 0 && r.Pos.Y == 0 && r.Size.W == 0 && r.Size.H == 0
+}
+
+// LeftEdge returns the X coordinate of the left edge of the rectangle.
+func (r Rectangle) LeftEdge() int {
+	return r.Pos.X
+}
+
+// RightEdge returns the X coordinate of the right edge of the rectangle.
+func (r Rectangle) RightEdge() int {
+	return r.Pos.X + r.Size.W
+}
+
+// TopEdge returns the Y coordinate of the top edge of the rectangle.
+func (r Rectangle) TopEdge() int {
+	return r.Pos.Y
+}
+
+// BottomEdge returns the Y coordinate of the bottom edge of the rectangle.
+func (r Rectangle) BottomEdge() int {
+	return r.Pos.Y + r.Size.H
+}
+
 func (r Rectangle) String() string {
 	return fmt.Sprintf("(Pos:%v, Size:%v)", r.Pos, r.Size)
 }
