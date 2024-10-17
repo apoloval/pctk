@@ -60,6 +60,7 @@ func (v *Viewport) CameraFollowActor(actor *Actor) error {
 
 // CameraMoveTo moves the camera to the given position.
 func (v *Viewport) CameraMoveTo(pos int) {
+	v.camtarget = pos
 	v.camera = v.camera.WithTarget(NewPos(pos, 0))
 	v.follow = nil
 }
