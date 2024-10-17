@@ -116,6 +116,7 @@ func TestObjectType(t *testing.T) {
 			default = state {
 				anim = fixedanim { row = 3, col = 5 },
 			},
+			state = "default"
 		}
 		assert(o.name == "bar")
 		assert(o.class == APPLICABLE)
