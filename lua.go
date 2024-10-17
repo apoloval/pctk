@@ -1073,6 +1073,24 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		}
 		return 0
 	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "camleft", func(l *LuaInterpreter) int {
+		l.CheckEntity(1, ScriptEntityRoom)
+		// TODO: hack obtaining viewport
+		_, err := l.app.RunCommand(RoomCameraOnLeftEdge(&l.app.viewport)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error putting camera on left edge: %s", err.Error())
+		}
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "camright", func(l *LuaInterpreter) int {
+		l.CheckEntity(1, ScriptEntityRoom)
+		// TODO: hack obtaining viewport
+		_, err := l.app.RunCommand(RoomCameraOnRightEdge(&l.app.viewport)).Wait()
+		if err != nil {
+			lua.Errorf(l.State, "error putting camera on right edge: %s", err.Error())
+		}
+		return 0
+	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "show", func(l *LuaInterpreter) int {
 		l.app.RunCommand(RoomShow{
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),

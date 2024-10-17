@@ -65,6 +65,16 @@ func (v *Viewport) CameraMoveTo(pos int) {
 	v.follow = nil
 }
 
+// CameraOnLeftEdge puts the camera on the left edge of the room.
+func (v *Viewport) CameraOnLeftEdge() {
+	v.CameraMoveTo(0)
+}
+
+// CameraOnRightEdge puts the camera on the right edge of the room.
+func (v *Viewport) CameraOnRightEdge() {
+	v.CameraMoveTo(v.Room.Rect().Size.W - ScreenWidth)
+}
+
 // ProcessFrame processes the frame in the viewport.
 func (v *Viewport) ProcessFrame(f *Frame) {
 	if v.Room == nil {
