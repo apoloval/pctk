@@ -16,8 +16,8 @@ const (
 	// FontDialogSpacing is the spacing between glyphs in the dialog font.
 	FontDialogSpacing = -1
 
-	// DialogScreenMarging is the margin of the screen left by the dialog.
-	DialogScreenMarging = 10
+	// DialogBoundsMargin is the margin of the bounds left by the dialog.
+	DialogBoundsMargin = 10
 )
 
 type TextAlignment int
@@ -78,8 +78,12 @@ func DrawDefaultText(text string, pos Position, align TextAlignment, color Color
 }
 
 // DrawDialogText draws text using the dialog font.
-func DrawDialogText(text string, pos Position, color Color) {
+func DrawDialogText(text string, pos Position, bounds Rectangle, color Color) {
 	fontSolid, fontOutline := FontDialog()
+
+	if bounds.IsZero() {
+		bounds = NewRect(0, 0, ScreenWidth, ScreenHeight)
+	}
 
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
@@ -87,11 +91,11 @@ func DrawDialogText(text string, pos Position, color Color) {
 		tsize := sizeFromRaylib(rl.MeasureTextEx(fontOutline, line, FontDialogSize, FontDialogSpacing))
 		tw := tsize.W
 
-		if pos.X-tw/2 < DialogScreenMarging {
-			pos.X = tw/2 + DialogScreenMarging
+		if pos.X-tw/2 < bounds.LeftEdge()+DialogBoundsMargin {
+			pos.X = tw/2 + bounds.LeftEdge() + DialogBoundsMargin
 		}
-		if pos.X+tw/2 > ScreenWidth-DialogScreenMarging {
-			pos.X = ScreenWidth - tw/2 - DialogScreenMarging
+		if pos.X+tw/2 > bounds.RightEdge()-DialogBoundsMargin {
+			pos.X = bounds.RightEdge() - tw/2 - DialogBoundsMargin
 		}
 
 		rl.DrawTextEx(
