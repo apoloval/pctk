@@ -89,19 +89,24 @@ func DrawDialogText(text string, pos Position, bounds Rectangle, color Color) {
 	for i, line := range lines {
 
 		tsize := sizeFromRaylib(rl.MeasureTextEx(fontOutline, line, FontDialogSize, FontDialogSpacing))
-		tw := tsize.W
 
-		if pos.X-tw/2 < bounds.LeftEdge()+DialogBoundsMargin {
-			pos.X = tw/2 + bounds.LeftEdge() + DialogBoundsMargin
+		if pos.X-tsize.W/2 < bounds.LeftEdge()+DialogBoundsMargin {
+			pos.X = tsize.W/2 + bounds.LeftEdge() + DialogBoundsMargin
 		}
-		if pos.X+tw/2 > bounds.RightEdge()-DialogBoundsMargin {
-			pos.X = bounds.RightEdge() - tw/2 - DialogBoundsMargin
+		if pos.X+tsize.W/2 > bounds.RightEdge()-DialogBoundsMargin {
+			pos.X = bounds.RightEdge() - tsize.W/2 - DialogBoundsMargin
+		}
+		if pos.Y-tsize.H/2 < bounds.TopEdge()+DialogBoundsMargin {
+			pos.Y = tsize.H/2 + bounds.TopEdge() + DialogBoundsMargin
+		}
+		if pos.Y+tsize.H/2 > bounds.BottomEdge()-DialogBoundsMargin {
+			pos.Y = bounds.BottomEdge() - tsize.H/2 - DialogBoundsMargin
 		}
 
 		rl.DrawTextEx(
 			fontSolid,
 			line,
-			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
+			rl.Vector2{X: float32(pos.X - tsize.W/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
 			FontDialogSpacing,
 			color,
@@ -109,7 +114,7 @@ func DrawDialogText(text string, pos Position, bounds Rectangle, color Color) {
 		rl.DrawTextEx(
 			fontOutline,
 			line,
-			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
+			rl.Vector2{X: float32(pos.X - tsize.W/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
 			FontDialogSpacing,
 			rl.Black,
