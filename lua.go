@@ -780,6 +780,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 	}
 	l.DeclareEntityConstructor(ScriptEntityObject, "object", func(l *LuaInterpreter) int {
 		obj := NewObject()
+		var state string
 		l.WithEachTableItem(1, func(key string) {
 			switch key {
 			case "class":
@@ -793,7 +794,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 			case "sprites":
 				obj.Sprites = l.CheckEntity(-1, ScriptEntityRef).(ResourceRef)
 			case "state":
-				obj.State = lua.CheckString(l.State, -1)
+				state = lua.CheckString(l.State, -1)
 			case "usepos":
 				obj.UsePos = l.CheckEntity(-1, ScriptEntityPos).(Position)
 			case "usedir":
@@ -802,6 +803,7 @@ func (l *LuaInterpreter) DeclareObjectType() {
 				switch l.EntityTypeOf(-1) {
 				case ScriptEntityState:
 					st := l.CheckEntity(-1, ScriptEntityState).(*ObjectState)
+					st.Object = obj
 					obj.States[key] = st
 				default:
 					lua.ArgumentError(l.State, -1, fmt.Sprintf(
@@ -811,12 +813,17 @@ func (l *LuaInterpreter) DeclareObjectType() {
 		})
 		l.PushEntity(ScriptEntityObject, obj)
 
-		// Set the states as fields of the object with the same key as they was declared in the
-		// constructor input.
-		for k, st := range obj.States {
-			l.PushEntity(ScriptEntityState, st)
-			l.SetField(-2, k)
+		// Set the current state
+		for name, st := range obj.States {
+			if name == state {
+				obj.State = st
+				break
+			}
 		}
+		if len(obj.States) > 0 && obj.State == nil {
+			lua.ArgumentError(l.State, 1, fmt.Sprintf("object state '%s' is not defined", state))
+		}
+
 		return 1
 	})
 	l.DeclareEntityGetter(ScriptEntityObject, "class", func(l *LuaInterpreter) int {
@@ -871,6 +878,11 @@ func (l *LuaInterpreter) DeclareObjectStateType() {
 		st := l.CheckEntity(1, ScriptEntityState).(*ObjectState)
 		l.PushEntity(ScriptEntityAnimation, st.Anim)
 		return 1
+	})
+	l.DeclareEntityMethod(ScriptEntityState, "set", func(l *LuaInterpreter) int {
+		st := l.CheckEntity(1, ScriptEntityState).(*ObjectState)
+		l.app.RunCommand(ObjectSetState(st)).Wait()
+		return 0
 	})
 }
 
