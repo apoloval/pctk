@@ -166,6 +166,16 @@ func (r *Room) PutActor(actor *Actor) {
 	r.actors = append(r.actors, actor)
 }
 
+// RemoveActor removes an actor from the room.
+func (r *Room) RemoveActor(actor *Actor) {
+	for i, act := range r.actors {
+		if act == actor {
+			r.actors = append(r.actors[:i], r.actors[i+1:]...)
+			return
+		}
+	}
+}
+
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
 	Caption() string
@@ -188,11 +198,11 @@ func (a *App) DeclareRoom(room *Room) error {
 }
 
 // StartRoom starts the given room in the application.
-func (a *App) StartRoom(room *Room) Future {
+func (a *App) StartRoom(room *Room, entrance *Object) Future {
 	for _, r := range a.rooms {
 		if r == room {
 			room.Load(a.res)
-			return a.viewport.ActivateRoom(room)
+			return a.viewport.ActivateRoom(room, entrance)
 		}
 	}
 	return AlreadyFailed(errors.New("Room not declared"))

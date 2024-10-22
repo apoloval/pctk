@@ -311,3 +311,15 @@ func (a *App) ActorShow(actor *Actor, pos Position, lookAt Direction) error {
 	actor.Locate(a.viewport.Room, pos, lookAt)
 	return nil
 }
+
+// ActorHide hides the actor from its current room.
+func (a *App) ActorHide(actor *Actor) {
+	if actor.Room != nil {
+		actor.Room.RemoveActor(actor)
+	}
+}
+
+// ActorEnter makes the actor enter the room through the given entrance.
+func (a *App) ActorEnter(actor *Actor, entrance *Object) error {
+	return a.ActorShow(actor, entrance.UsePos, entrance.UseDir.Inverse())
+}

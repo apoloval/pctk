@@ -214,6 +214,17 @@ func (l *LuaInterpreter) DeclareActorType() {
 		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
+	l.DeclareEntityMethod(ScriptEntityActor, "enter", func(l *LuaInterpreter) int {
+		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
+		entrance := l.CheckEntity(2, ScriptEntityObject).(*Object)
+		l.app.RunCommand(ActorEnter(actor, entrance)).Wait()
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityActor, "hide", func(l *LuaInterpreter) int {
+		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
+		l.app.RunCommand(ActorHide(actor)).Wait()
+		return 0
+	})
 	l.DeclareEntityMethod(ScriptEntityActor, "toinventory", func(l *LuaInterpreter) int {
 		var cmd ActorAddToInventory
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
@@ -1092,9 +1103,13 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "show", func(l *LuaInterpreter) int {
-		l.app.RunCommand(RoomShow{
+		cmd := RoomShow{
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),
-		})
+		}
+		if !l.IsNil(2) {
+			cmd.Entrance = l.CheckEntity(2, ScriptEntityObject).(*Object)
+		}
+		l.app.RunCommand(cmd)
 		return 0
 	})
 }

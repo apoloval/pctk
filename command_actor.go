@@ -36,6 +36,24 @@ func (cmd ActorShow) Execute(app *App, done *Promise) {
 	done.Complete()
 }
 
+// ActorEnter is a command that will make an actor enter the room through the given entrance.
+func ActorEnter(actor *Actor, entrance *Object) CommandFunc {
+	return func(a *App) (any, error) {
+		if err := a.ActorEnter(actor, entrance); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+}
+
+// ActorHide is a command that will hide an actor from the room.
+func ActorHide(actor *Actor) CommandFunc {
+	return func(a *App) (any, error) {
+		a.ActorHide(actor)
+		return nil, nil
+	}
+}
+
 // ActorLookAtPos is a command that will make an actor look at a given position.
 type ActorLookAtPos struct {
 	Actor    *Actor
