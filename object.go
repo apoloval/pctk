@@ -67,8 +67,8 @@ func (o *Object) FindCallback(name string) *ScriptCallback {
 	return nil
 }
 
-// GetScriptField returns the state of the object with the given name.
-func (o *Object) GetScriptField(name string) *ScriptEntityValue {
+// GetScriptChildEntity returns a child entity among object states by their name.
+func (o *Object) GetScriptChildEntity(name string) *ScriptEntityValue {
 	if state, ok := o.States[name]; ok {
 		return &ScriptEntityValue{Type: ScriptEntityState, UserData: state}
 	}

@@ -474,8 +474,8 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 		}
 
 		// Look for getters defined by the user type
-		if recv, ok := entity.(ScriptCustomGetter); ok {
-			val := recv.GetScriptField(key)
+		if recv, ok := entity.(ScriptEntityComposition); ok {
+			val := recv.GetScriptChildEntity(key)
 			if val != nil {
 				l.PushEntity(val.Type, val.UserData)
 				return 1

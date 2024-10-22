@@ -114,10 +114,10 @@ type ScriptCallbackReceiver interface {
 	FindCallback(name string) *ScriptCallback
 }
 
-// ScriptCustomGetter is an interface to get custom values from a script. User values that implement
-// this interface can expose other user values to the script through getters.
-type ScriptCustomGetter interface {
-	GetScriptField(name string) *ScriptEntityValue
+// ScriptEntityComposition is an interface of an entity that is composed of other script entities.
+// The interface gives access to the child entities by its name.
+type ScriptEntityComposition interface {
+	GetScriptChildEntity(name string) *ScriptEntityValue
 }
 
 // ScriptCallbackID is the identifier of a callback function in a script.

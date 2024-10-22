@@ -93,8 +93,8 @@ func (r *Room) FindCallback(name string) *ScriptCallback {
 	return nil
 }
 
-// GetScriptField returns the script field with the given name, or nil if not found.
-func (r *Room) GetScriptField(name string) *ScriptEntityValue {
+// GetScriptChildEntity returns the child entity among the room objects and walkboxes by their name.
+func (r *Room) GetScriptChildEntity(name string) *ScriptEntityValue {
 	for tag, obj := range r.objects {
 		if tag == name {
 			return &ScriptEntityValue{
