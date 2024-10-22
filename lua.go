@@ -1097,9 +1097,13 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "show", func(l *LuaInterpreter) int {
-		l.app.RunCommand(RoomShow{
+		cmd := RoomShow{
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),
-		})
+		}
+		if l.IsNil(2) {
+			cmd.Entrance = l.CheckEntity(2, ScriptEntityObject).(*Object)
+		}
+		l.app.RunCommand(cmd)
 		return 0
 	})
 }

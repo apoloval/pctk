@@ -52,7 +52,7 @@ func (v *Viewport) SubscribeEventHandler(handler ViewportEventHandler) {
 
 // ActivateRoom sets the given room as the active room in the viewport. It will call the exit and
 // enter functions of the previous and new rooms, respectively, represented in the returned future.
-func (v *Viewport) ActivateRoom(room *Room) Future {
+func (v *Viewport) ActivateRoom(room *Room, entrance *Object) Future {
 	var job Future
 	if prev := v.Room; prev != nil {
 		if cb := prev.FindCallback("exit"); cb != nil {
@@ -72,8 +72,15 @@ func (v *Viewport) ActivateRoom(room *Room) Future {
 	})
 	if cb := room.FindCallback("enter"); cb != nil {
 		job = Continue(job, func(a any) Future {
+			var args []ScriptEntityValue
+			if entrance != nil {
+				args = append(args, ScriptEntityValue{
+					Type:     ScriptEntityObject,
+					UserData: entrance,
+				})
+			}
 			return RecoverWithValue(
-				cb.Invoke(nil),
+				cb.Invoke(args),
 				func(err error) any {
 					log.Printf("Failed to call room enter function: %v", err)
 					return nil

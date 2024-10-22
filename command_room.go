@@ -15,11 +15,12 @@ func (cmd RoomDeclare) Execute(app *App, done *Promise) {
 
 // RoomShow is a command that will show the room with the given resource.
 type RoomShow struct {
-	Room *Room
+	Room     *Room
+	Entrance *Object
 }
 
 func (cmd RoomShow) Execute(app *App, done *Promise) {
-	done.Bind(app.StartRoom(cmd.Room))
+	done.Bind(app.StartRoom(cmd.Room, cmd.Entrance))
 }
 
 // RoomCameraTo is a command that will move the camera to the given position.

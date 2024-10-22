@@ -198,11 +198,11 @@ func (a *App) DeclareRoom(room *Room) error {
 }
 
 // StartRoom starts the given room in the application.
-func (a *App) StartRoom(room *Room) Future {
+func (a *App) StartRoom(room *Room, entrance *Object) Future {
 	for _, r := range a.rooms {
 		if r == room {
 			room.Load(a.res)
-			return a.viewport.ActivateRoom(room)
+			return a.viewport.ActivateRoom(room, entrance)
 		}
 	}
 	return AlreadyFailed(errors.New("Room not declared"))
