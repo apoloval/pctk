@@ -36,6 +36,14 @@ func (cmd ActorShow) Execute(app *App, done *Promise) {
 	done.Complete()
 }
 
+// ActorHide is a command that will hide an actor from the room.
+func ActorHide(actor *Actor) CommandFunc {
+	return func(a *App) (any, error) {
+		a.ActorHide(actor)
+		return nil, nil
+	}
+}
+
 // ActorLookAtPos is a command that will make an actor look at a given position.
 type ActorLookAtPos struct {
 	Actor    *Actor

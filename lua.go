@@ -214,6 +214,11 @@ func (l *LuaInterpreter) DeclareActorType() {
 		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
+	l.DeclareEntityMethod(ScriptEntityActor, "hide", func(l *LuaInterpreter) int {
+		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
+		l.app.RunCommand(ActorHide(actor)).Wait()
+		return 0
+	})
 	l.DeclareEntityMethod(ScriptEntityActor, "toinventory", func(l *LuaInterpreter) int {
 		var cmd ActorAddToInventory
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)

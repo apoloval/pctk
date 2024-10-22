@@ -166,6 +166,16 @@ func (r *Room) PutActor(actor *Actor) {
 	r.actors = append(r.actors, actor)
 }
 
+// RemoveActor removes an actor from the room.
+func (r *Room) RemoveActor(actor *Actor) {
+	for i, act := range r.actors {
+		if act == actor {
+			r.actors = append(r.actors[:i], r.actors[i+1:]...)
+			return
+		}
+	}
+}
+
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
 	Caption() string
