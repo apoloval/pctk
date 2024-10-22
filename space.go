@@ -318,6 +318,22 @@ func (r Rectangle) Contains(pos Position) bool {
 // Direction represents a direction in 2D space.
 type Direction byte
 
+// Inverse returns the opposite direction.
+func (d Direction) Inverse() Direction {
+	switch d {
+	case DirUp:
+		return DirDown
+	case DirDown:
+		return DirUp
+	case DirLeft:
+		return DirRight
+	case DirRight:
+		return DirLeft
+	default:
+		return d
+	}
+}
+
 func (d Direction) String() string {
 	switch d {
 	case DirUp:

@@ -214,6 +214,12 @@ func (l *LuaInterpreter) DeclareActorType() {
 		l.app.RunCommand(cmd).Wait()
 		return 0
 	})
+	l.DeclareEntityMethod(ScriptEntityActor, "enter", func(l *LuaInterpreter) int {
+		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
+		entrance := l.CheckEntity(2, ScriptEntityObject).(*Object)
+		l.app.RunCommand(ActorEnter(actor, entrance)).Wait()
+		return 0
+	})
 	l.DeclareEntityMethod(ScriptEntityActor, "hide", func(l *LuaInterpreter) int {
 		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		l.app.RunCommand(ActorHide(actor)).Wait()

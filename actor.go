@@ -318,3 +318,8 @@ func (a *App) ActorHide(actor *Actor) {
 		actor.Room.RemoveActor(actor)
 	}
 }
+
+// ActorEnter makes the actor enter the room through the given entrance.
+func (a *App) ActorEnter(actor *Actor, entrance *Object) error {
+	return a.ActorShow(actor, entrance.UsePos, entrance.UseDir.Inverse())
+}
