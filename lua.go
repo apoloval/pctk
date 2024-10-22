@@ -1106,7 +1106,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		cmd := RoomShow{
 			Room: l.CheckEntity(1, ScriptEntityRoom).(*Room),
 		}
-		if l.IsNil(2) {
+		if !l.IsNil(2) {
 			cmd.Entrance = l.CheckEntity(2, ScriptEntityObject).(*Object)
 		}
 		l.app.RunCommand(cmd)
