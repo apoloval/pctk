@@ -484,7 +484,7 @@ func (l *LuaInterpreter) DeclareEntityType(typ ScriptEntityType) bool {
 
 		// The field was not found.
 		lua.ArgumentError(l.State, 2, fmt.Sprintf(
-			"no getter or method '%s' declared for  entity type '%s'", key, typ))
+			"no getter or method '%s' declared for entity type '%s'", key, typ))
 		return 0
 	})
 	l.SetField(-2, "__index")
@@ -1063,6 +1063,24 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
 		l.PushEntity(ScriptEntityRef, room.Background)
 		return 1
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "flag", func(l *LuaInterpreter) int {
+		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		name := lua.CheckString(l.State, 2)
+		l.PushBoolean(room.Flag(name))
+		return 1
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "setflag", func(l *LuaInterpreter) int {
+		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		name := lua.CheckString(l.State, 2)
+		room.SetFlag(name, true)
+		return 0
+	})
+	l.DeclareEntityMethod(ScriptEntityRoom, "resetflag", func(l *LuaInterpreter) int {
+		room := l.CheckEntity(1, ScriptEntityRoom).(*Room)
+		name := lua.CheckString(l.State, 2)
+		room.SetFlag(name, false)
+		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityRoom, "camfollow", func(l *LuaInterpreter) int {
 		l.CheckEntity(1, ScriptEntityRoom)
