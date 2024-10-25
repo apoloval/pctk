@@ -19,6 +19,8 @@ type LuaInterpreter struct {
 	mutex  sync.Mutex
 	app    *App
 	script *Script
+
+	cutscene *Promise
 }
 
 // NewLuaInterpreter creates a new LuaInterpreter.
@@ -60,6 +62,17 @@ func (l *LuaInterpreter) CallMethod(cb ScriptCallbackID, args []ScriptEntityValu
 	err := l.ProtectedCall(len(args)+1, 0, 0)
 	l.Pop(2)
 	return err
+}
+
+// InterruptCutscene cancels the current cutscene, if any.
+func (l *LuaInterpreter) InterruptCutscene() {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if l.cutscene != nil {
+		l.cutscene.Break()
+	}
+	l.cutscene = nil
 }
 
 // CheckEntity checks if the entity in the given index is of the given type, and returns it.
@@ -182,7 +195,7 @@ func (l *LuaInterpreter) DeclareActorType() {
 		var cmd ActorStand
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Direction = l.CheckEntity(2, ScriptEntityDir).(Direction)
-		l.app.RunCommand(cmd).Wait()
+		l.runCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "say", func(l *LuaInterpreter) int {
@@ -192,14 +205,14 @@ func (l *LuaInterpreter) DeclareActorType() {
 		l.WithOptionalField(3, "color", func() {
 			cmd.Color = l.CheckEntity(-1, ScriptEntityColor).(Color)
 		})
-		done := l.app.RunCommand(cmd)
+		done := l.runCommand(cmd)
 		l.PushEntity(ScriptEntityFuture, done)
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "select", func(l *LuaInterpreter) int {
 		var cmd ActorSelectEgo
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
-		l.app.RunCommand(cmd).Wait()
+		l.runCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "show", func(l *LuaInterpreter) int {
@@ -211,32 +224,32 @@ func (l *LuaInterpreter) DeclareActorType() {
 		l.WithOptionalField(2, "lookat", func() {
 			cmd.LookAt = l.CheckEntity(-1, ScriptEntityDir).(Direction)
 		})
-		l.app.RunCommand(cmd).Wait()
+		l.runCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "enter", func(l *LuaInterpreter) int {
 		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		entrance := l.CheckEntity(2, ScriptEntityObject).(*Object)
-		l.app.RunCommand(ActorEnter(actor, entrance)).Wait()
+		l.runCommand(ActorEnter(actor, entrance)).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "hide", func(l *LuaInterpreter) int {
 		actor := l.CheckEntity(1, ScriptEntityActor).(*Actor)
-		l.app.RunCommand(ActorHide(actor)).Wait()
+		l.runCommand(ActorHide(actor)).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "toinventory", func(l *LuaInterpreter) int {
 		var cmd ActorAddToInventory
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Object = l.CheckEntity(2, ScriptEntityObject).(*Object)
-		l.app.RunCommand(cmd).Wait()
+		l.runCommand(cmd).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityActor, "walkto", func(l *LuaInterpreter) int {
 		var cmd ActorWalkToPosition
 		cmd.Actor = l.CheckEntity(1, ScriptEntityActor).(*Actor)
 		cmd.Position = l.CheckEntity(2, ScriptEntityPos).(Position)
-		done := l.app.RunCommand(cmd)
+		done := l.runCommand(cmd)
 		l.PushEntity(ScriptEntityFuture, done)
 		return 1
 	})
@@ -374,35 +387,35 @@ func (l *LuaInterpreter) DeclareControlType() {
 		return
 	}
 	l.DeclareEntityMethod(ScriptEntityControl, "cursoron", func(l *LuaInterpreter) int {
-		_, err := l.app.RunCommand(MouseCursorOn()).Wait()
+		_, err := l.runCommand(MouseCursorOn()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling cursor: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "cursoroff", func(l *LuaInterpreter) int {
-		_, err := l.app.RunCommand(MouseCursorOff()).Wait()
+		_, err := l.runCommand(MouseCursorOff()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling cursor: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "paneon", func(l *LuaInterpreter) int {
-		_, err := l.app.RunCommand(ControlPaneEnable()).Wait()
+		_, err := l.runCommand(ControlPaneEnable()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling control panel: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "paneoff", func(l *LuaInterpreter) int {
-		_, err := l.app.RunCommand(ControlPaneDisable()).Wait()
+		_, err := l.runCommand(ControlPaneDisable()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling control panel: %s", err.Error())
 		}
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityControl, "sentencechoice", func(l *LuaInterpreter) int {
-		val, err := l.app.RunCommand(SentenceChoiceInit()).Wait()
+		val, err := l.runCommand(SentenceChoiceInit()).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error initializing sentence choice: %s", err.Error())
 		}
@@ -687,8 +700,12 @@ func (l *LuaInterpreter) DeclareFutureType() {
 
 		// Liberate the mutex during the wait to allow other callbacks to be invoked.
 		l.mutex.Unlock()
-		f.Wait()
+		_, err := f.Wait()
 		l.mutex.Lock()
+
+		if err != nil {
+			lua.Errorf(l.State, "error waiting for future: %s", err.Error())
+		}
 
 		return 0
 	})
@@ -751,7 +768,7 @@ func (l *LuaInterpreter) DeclareMusicType() {
 		return 1
 	})
 	l.DeclareEntityMethod(ScriptEntityMusic, "play", func(l *LuaInterpreter) int {
-		l.app.RunCommand(MusicPlay{
+		l.runCommand(MusicPlay{
 			Music: l.CheckEntity(1, ScriptEntityMusic).(*Music),
 		})
 		return 0
@@ -760,7 +777,7 @@ func (l *LuaInterpreter) DeclareMusicType() {
 		// TODO: music stopped from the music entity is odd. In fact, everything about music
 		// is really odd. Music should be a member of room and sound as long as the room is active.
 		// And stop music should be a command to the room.
-		l.app.RunCommand(MusicStop{})
+		l.runCommand(MusicStop{})
 		return 0
 	})
 }
@@ -867,13 +884,13 @@ func (l *LuaInterpreter) DeclareObjectType() {
 	l.DeclareEntityMethod(ScriptEntityObject, "classon", func(l *LuaInterpreter) int {
 		obj := l.CheckEntity(1, ScriptEntityObject).(*Object)
 		class := l.CheckEntity(2, ScriptEntityClass).(ObjectClass)
-		l.app.RunCommand(ObjectEnableClass(obj, class)).Wait()
+		l.runCommand(ObjectEnableClass(obj, class)).Wait()
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntityObject, "classoff", func(l *LuaInterpreter) int {
 		obj := l.CheckEntity(1, ScriptEntityObject).(*Object)
 		class := l.CheckEntity(2, ScriptEntityClass).(ObjectClass)
-		l.app.RunCommand(ObjectDisableClass(obj, class)).Wait()
+		l.runCommand(ObjectDisableClass(obj, class)).Wait()
 		return 0
 	})
 	l.DeclareEntityToString(ScriptEntityObject, func(l *LuaInterpreter) int {
@@ -905,7 +922,7 @@ func (l *LuaInterpreter) DeclareObjectStateType() {
 	})
 	l.DeclareEntityMethod(ScriptEntityState, "set", func(l *LuaInterpreter) int {
 		st := l.CheckEntity(1, ScriptEntityState).(*ObjectState)
-		l.app.RunCommand(ObjectSetState(st)).Wait()
+		l.runCommand(ObjectSetState(st)).Wait()
 		return 0
 	})
 }
@@ -1086,7 +1103,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		l.CheckEntity(1, ScriptEntityRoom)
 		actor := l.CheckEntity(2, ScriptEntityActor).(*Actor)
 		// TODO: hack obtaining viewport
-		_, err := l.app.RunCommand(RoomCameraFollowActor(&l.app.viewport, actor)).Wait()
+		_, err := l.runCommand(RoomCameraFollowActor(&l.app.viewport, actor)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error making camera follow actor: %s", err.Error())
 		}
@@ -1096,7 +1113,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		l.CheckEntity(1, ScriptEntityRoom)
 		pos := lua.CheckInteger(l.State, 2)
 		// TODO: hack obtaining viewport
-		_, err := l.app.RunCommand(RoomCameraTo(&l.app.viewport, pos)).Wait()
+		_, err := l.runCommand(RoomCameraTo(&l.app.viewport, pos)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error moving camera to position: %s", err.Error())
 		}
@@ -1105,7 +1122,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 	l.DeclareEntityMethod(ScriptEntityRoom, "camleft", func(l *LuaInterpreter) int {
 		l.CheckEntity(1, ScriptEntityRoom)
 		// TODO: hack obtaining viewport
-		_, err := l.app.RunCommand(RoomCameraOnLeftEdge(&l.app.viewport)).Wait()
+		_, err := l.runCommand(RoomCameraOnLeftEdge(&l.app.viewport)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error putting camera on left edge: %s", err.Error())
 		}
@@ -1114,7 +1131,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 	l.DeclareEntityMethod(ScriptEntityRoom, "camright", func(l *LuaInterpreter) int {
 		l.CheckEntity(1, ScriptEntityRoom)
 		// TODO: hack obtaining viewport
-		_, err := l.app.RunCommand(RoomCameraOnRightEdge(&l.app.viewport)).Wait()
+		_, err := l.runCommand(RoomCameraOnRightEdge(&l.app.viewport)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error putting camera on right edge: %s", err.Error())
 		}
@@ -1127,7 +1144,7 @@ func (l *LuaInterpreter) DeclareRoomType() {
 		if !l.IsNil(2) {
 			cmd.Entrance = l.CheckEntity(2, ScriptEntityObject).(*Object)
 		}
-		l.app.RunCommand(cmd)
+		l.runCommand(cmd)
 		return 0
 	})
 }
@@ -1140,7 +1157,7 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType() {
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "add", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
 		sentence := lua.CheckString(l.State, 2)
-		_, err := l.app.RunCommand(SentenceChoiceAdd(choice, sentence)).Wait()
+		_, err := l.runCommand(SentenceChoiceAdd(choice, sentence)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error adding sentence to choice: %s", err.Error())
 		}
@@ -1148,7 +1165,7 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType() {
 	})
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "wait", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
-		ret, err := l.app.RunCommand(SentenceChoiceWait(choice, false)).Wait()
+		ret, err := l.runCommand(SentenceChoiceWait(choice, false)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
 		}
@@ -1159,7 +1176,7 @@ func (l *LuaInterpreter) DeclareSentenceChoiceType() {
 	})
 	l.DeclareEntityMethod(ScriptEntitySentenceChoice, "waitsay", func(l *LuaInterpreter) int {
 		choice := l.CheckEntity(1, ScriptEntitySentenceChoice).(*ControlSentenceChoice)
-		ret, err := l.app.RunCommand(SentenceChoiceWait(choice, true)).Wait()
+		ret, err := l.runCommand(SentenceChoiceWait(choice, true)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error waiting sentence choice: %s", err.Error())
 		}
@@ -1223,12 +1240,12 @@ func (l *LuaInterpreter) DeclareSoundType() {
 	})
 	l.DeclareEntityMethod(ScriptEntitySound, "play", func(l *LuaInterpreter) int {
 		sound := l.CheckEntity(1, ScriptEntitySound).(*Sound)
-		l.app.RunCommand(SoundPlay{Sound: sound})
+		l.runCommand(SoundPlay{Sound: sound})
 		return 0
 	})
 	l.DeclareEntityMethod(ScriptEntitySound, "stop", func(l *LuaInterpreter) int {
 		sound := l.CheckEntity(1, ScriptEntitySound).(*Sound)
-		l.app.RunCommand(SoundStop{Sound: sound})
+		l.runCommand(SoundStop{Sound: sound})
 		return 0
 	})
 }
@@ -1246,6 +1263,15 @@ func (l *LuaInterpreter) DeclareUtilityFunctions() {
 		return 0
 	})
 	l.SetGlobal("sleep")
+
+	l.PushFunction(func(l *LuaInterpreter) int {
+		if !l.IsFunction(1) {
+			lua.ArgumentError(l.State, 1, "expected function")
+		}
+		l.enterCutscene()
+		return 0
+	})
+	l.SetGlobal("cutscene")
 }
 
 // DeclareWalkBoxType declares the type of a Walkbox in the Lua interpreter.
@@ -1279,7 +1305,7 @@ func (l *LuaInterpreter) DeclareWalkBoxType() {
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "enable", func(l *LuaInterpreter) int {
 		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		_, err := l.app.RunCommand(EnableWalkBox(w)).Wait()
+		_, err := l.runCommand(EnableWalkBox(w)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error enabling walkbox: %s", err.Error())
 		}
@@ -1287,7 +1313,7 @@ func (l *LuaInterpreter) DeclareWalkBoxType() {
 	})
 	l.DeclareEntityMethod(ScriptEntityWalkBox, "disable", func(l *LuaInterpreter) int {
 		w := l.CheckEntity(1, ScriptEntityWalkBox).(*WalkBox)
-		_, err := l.app.RunCommand(DisableWalkBox(w)).Wait()
+		_, err := l.runCommand(DisableWalkBox(w)).Wait()
 		if err != nil {
 			lua.Errorf(l.State, "error disabling walkbox: %s", err.Error())
 		}
@@ -1400,4 +1426,34 @@ func (l *LuaInterpreter) WithEachTableItem(index int, f func(key string)) {
 		f(key)
 		l.Pop(1)
 	}
+}
+
+func (l *LuaInterpreter) runCommand(cmd Command) Future {
+	res := l.app.RunCommand(cmd)
+	if l.cutscene != nil {
+		res = FutureFirst(res, l.cutscene)
+	}
+	return res
+}
+
+func (l *LuaInterpreter) enterCutscene() {
+	l.beginCutscene()
+	l.ProtectedCall(0, 0, 0)
+	l.endCutscene()
+}
+
+func (l *LuaInterpreter) beginCutscene() {
+	if l.cutscene != nil {
+		lua.Errorf(l.State, "cutscene already in progress")
+	}
+	l.cutscene = NewPromise()
+	l.app.RunCommand(ControlPaneDisable()).Wait()
+	l.app.RunCommand(MouseCursorOff()).Wait()
+}
+
+func (l *LuaInterpreter) endCutscene() {
+	l.cutscene = nil
+	l.app.RunCommand(CancelDialogs()).Wait()
+	l.app.RunCommand(ControlPaneEnable()).Wait()
+	l.app.RunCommand(MouseCursorOn()).Wait()
 }

@@ -65,3 +65,10 @@ func (s *Script) luaCallMethod(cb ScriptCallbackID, args []ScriptEntityValue) Fu
 	}()
 	return prom
 }
+
+func (s *Script) luaInterruptCutscene() {
+	if s.lua == nil {
+		log.Panic("Script not initialized")
+	}
+	s.lua.InterruptCutscene()
+}
