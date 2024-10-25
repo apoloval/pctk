@@ -13,7 +13,6 @@ pirates = actor {
 }
 
 function melee:enter()
-    local skipintro = true
     melee.box4:disable()
 
     pirates:show {
@@ -28,11 +27,9 @@ function melee:enter()
     
     common.music1:play()
     common.cricket:play()
-    guybrush:walkto(pos {x=290, y=140}):wait()
-    if not skipintro then
-        CONTROL:paneoff()
-        CONTROL:cursoroff()
-
+    cutscene(function()
+        guybrush:walkto(pos {x=290, y=140}):wait()
+    
         guybrush:say("Hello, I'm Guybrush Threepwood,\nmighty pirate!"):wait()
         pirates:say("**Oh no! This guy again!**")
         guybrush:walkto(pos{x=120, y=140}):wait()
@@ -64,11 +61,13 @@ function melee:enter()
         sleep(1000)
         pirates:say("Me!")
         sleep(2000)
-    end
-
+        end 
+    )
+    guybrush:show {
+        pos = pos {x=360, y=140}, 
+        lookat = RIGHT,
+    }
     guybrush:select()
-    CONTROL:paneon()
-    CONTROL:cursoron()
     self:camfollow(guybrush)
 end
 

@@ -17,6 +17,7 @@ type Room struct {
 	actors     []*Actor           // The actors in the room
 	background *Image             // The background image of the room
 	callbacks  []*ScriptCallback  // The callbacks declared in the room
+	flags      map[string]bool    // The flags declared in the room
 	objects    map[string]*Object // The objects declared in the room
 	wbmatrix   *WalkBoxMatrix     // The wbmatrix defines the walkable areas within the room and their adjacency.
 }
@@ -24,6 +25,7 @@ type Room struct {
 // NewRoom creates a new room ready to be used.
 func NewRoom() *Room {
 	return &Room{
+		flags:   make(map[string]bool),
 		objects: make(map[string]*Object),
 	}
 }
@@ -34,6 +36,16 @@ func (r *Room) Rect() Rectangle {
 		return Rectangle{}
 	}
 	return NewRect(0, 0, int(r.background.Width()), int(r.background.Height()))
+}
+
+// Flag returns the value of the flag with the given name.
+func (r *Room) Flag(name string) bool {
+	return r.flags[name]
+}
+
+// SetFlag sets the value of the flag with the given name.
+func (r *Room) SetFlag(name string, value bool) {
+	r.flags[name] = value
 }
 
 // DeclareCallback declares a callback in the room.

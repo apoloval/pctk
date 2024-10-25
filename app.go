@@ -69,6 +69,7 @@ func (a *App) init() {
 	rl.InitAudioDevice()
 	rl.SetTargetFPS(60)
 	rl.HideCursor()
+	rl.SetExitKey(0)
 
 	a.mouse = NewMouseCursor()
 	a.frame = NewFrame(a.mouse, a.debugEnabled)

@@ -530,6 +530,10 @@ func (p *ControlPane) processMouseOver(app *App, frame *Frame) {
 }
 
 func (p *ControlPane) processInputs(app *App, frame *Frame) {
+	if rl.IsKeyPressed(rl.KeyEscape) {
+		app.InterruptCutscene()
+	}
+
 	if !frame.Mouse.Enabled || app.ego == nil {
 		return
 	}

@@ -149,6 +149,16 @@ func (a *Viewport) BeginDialog(dialog *Dialog) {
 	a.dialogs = append(a.dialogs, *dialog)
 }
 
+// CancelDialogs cancels all dialogs in the viewport.
+func (a *Viewport) CancelDialogs() {
+	for _, d := range a.dialogs {
+		if actor := d.Actor(); actor != nil {
+			actor.dialog = nil
+		}
+	}
+	a.dialogs = nil
+}
+
 func (a *Viewport) clearDialogsFrom(actor *Actor) {
 	dialogs := make([]Dialog, 0, len(a.dialogs))
 	for _, d := range a.dialogs {

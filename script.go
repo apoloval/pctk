@@ -239,6 +239,19 @@ func (s *Script) Run(app *App) {
 	}
 }
 
+// InterruptCutscene interrupts the current cutscene, if any.
+func (s *Script) InterruptCutscene() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	switch s.Language {
+	case ScriptLua:
+		s.luaInterruptCutscene()
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+	}
+}
+
 // LoadScript loads a script from the resources. If the script is already loaded, it will return the
 // loaded script. Otherwise, it will load the script, run it, and return it.
 func (a *App) LoadScript(ref ResourceRef) *Script {
@@ -252,4 +265,13 @@ func (a *App) LoadScript(ref ResourceRef) *Script {
 		script.Run(a)
 	}
 	return script
+}
+
+// InterruptCutscene interrupts the current cutscene, if any.
+func (a *App) InterruptCutscene() {
+	// TODO: we are not tracking what is the current script doing a cutscene. So we traverse them
+	// all.
+	for _, script := range a.scripts {
+		script.InterruptCutscene()
+	}
 }
