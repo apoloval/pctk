@@ -18,6 +18,9 @@ type Future interface {
 
 	// IsCompleted returns true if the future is completed.
 	IsCompleted() bool
+
+	// CompleteChan returns a channel that will be closed when the future is completed.
+	CompleteChan() <-chan struct{}
 }
 
 // AlreadySucceeded creates a future that is already succeeded.
@@ -35,6 +38,12 @@ func (f alreadySucceeded) IsCompleted() bool {
 	return true
 }
 
+func (f alreadySucceeded) CompleteChan() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
 // AlreadyFailed creates a future that is already failed.
 func AlreadyFailed(err error) Future {
 	return alreadyFailed{err}
@@ -48,6 +57,12 @@ func (f alreadyFailed) Wait() (any, error) {
 
 func (f alreadyFailed) IsCompleted() bool {
 	return true
+}
+
+func (f alreadyFailed) CompleteChan() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
 }
 
 // Continue continues a future with another future. This will wait for future f and call g once f is
@@ -109,6 +124,23 @@ func RecoverWithValue(f Future, g func(error) any) Future {
 	})
 }
 
+// FutureFirst returns a future whose value is the first value of the given futures that is
+// completed.
+func FutureFirst(f1, f2 Future) Future {
+	prom := NewPromise()
+	go func() {
+		select {
+		case <-f1.CompleteChan():
+			v, err := f1.Wait()
+			prom.CompleteWith(v, err)
+		case <-f2.CompleteChan():
+			v, err := f2.Wait()
+			prom.CompleteWith(v, err)
+		}
+	}()
+	return prom
+}
+
 // Promise is an instant when some event will be produced.
 type Promise struct {
 	done   chan struct{}
@@ -136,6 +168,11 @@ func (f *Promise) IsCompleted() bool {
 	default:
 		return false
 	}
+}
+
+// CompleteChan implements the Future interface.
+func (f *Promise) CompleteChan() <-chan struct{} {
+	return f.done
 }
 
 // Complete completes the future. This sets no value. The Wait function will return a zero value and
